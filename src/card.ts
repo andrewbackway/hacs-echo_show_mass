@@ -4,7 +4,7 @@ import type {
   LovelaceCardConfig,
   MusicAssistantCardConfig,
 } from './home-assistant';
-import { addCurrentMusicAssistantItemToFavorites, addMusicAssistantPlayerToGroup, addMusicAssistantPlaylistTracks, advanceMusicAssistantQueue, browseMusicAssistant, clearMusicAssistantQueue, createMusicAssistantPlaylist, getActiveMusicAssistantQueue, getMusicAssistantPlayers, getMusicAssistantQueueItems, listMusicAssistantPlaylists, playMusicAssistantMedia, playMusicAssistantQueueItem, removeMusicAssistantFavorite, removeMusicAssistantPlayerFromGroup, removeMusicAssistantPlayersFromGroup, seekMusicAssistantQueue, setMusicAssistantRepeat, setMusicAssistantShuffle, setMusicAssistantVolume, searchMusicAssistantApi, toggleMusicAssistantQueuePlayback, transferMusicAssistantQueue, type MusicAssistantMediaItem, type MusicAssistantPlayer, type MusicAssistantPlaylist } from './music-assistant/api';
+import { addMusicAssistantFavorite, addMusicAssistantPlayerToGroup, addMusicAssistantPlaylistTracks, advanceMusicAssistantQueue, browseMusicAssistant, clearMusicAssistantQueue, createMusicAssistantPlaylist, getActiveMusicAssistantQueue, getMusicAssistantPlayers, getMusicAssistantQueueItems, listMusicAssistantPlaylists, playMusicAssistantMedia, playMusicAssistantQueueItem, removeMusicAssistantFavorite, removeMusicAssistantPlayerFromGroup, removeMusicAssistantPlayersFromGroup, seekMusicAssistantQueue, setMusicAssistantRepeat, setMusicAssistantShuffle, setMusicAssistantVolume, searchMusicAssistantApi, toggleMusicAssistantQueuePlayback, transferMusicAssistantQueue, type MusicAssistantMediaItem, type MusicAssistantPlayer, type MusicAssistantPlaylist } from './music-assistant/api';
 import { type MediaBrowseResponse, type MediaItem } from './music-assistant/media-browser';
 import { flattenSearchResults, type SearchGroup, type SearchItem, type SearchResponse } from './music-assistant/search';
 import { type QueueDetails, type QueueItem } from './music-assistant/queue';
@@ -24,20 +24,21 @@ const cardStyles = `
   .top-menu .player-action { min-width: 0; justify-content: flex-start; pointer-events: auto; }
   .top-menu .menu-actions { display: flex; justify-content: flex-end; gap: 6px; pointer-events: none; }
   .top-menu .menu-action { min-width: var(--music-touch-target); min-height: var(--music-touch-target); pointer-events: auto; }
-  .top-menu .menu-label { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .top-menu .menu-label { flex: 1 1 auto; min-width: 0; max-width: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .primary-view { position: absolute; z-index: 1; inset: 14px; min-height: 0; overflow: hidden; }
   .now-playing-screen { padding-top: var(--music-header-height); }
   .now-playing-screen .playback { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto auto; height: 100%; box-sizing: border-box; gap: 12px; margin: 0; padding: 18px 10px 8px; border: 0; background: transparent; }
-  .now-playing-layout { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 0; }
-  .now-playing-art { width: min(180px, 30vh, 60vw); aspect-ratio: 1; flex: 0 1 auto; display: grid; place-items: center; overflow: hidden; border-radius: 8px; background: var(--music-raised); color: var(--music-muted); }
+  .now-playing-layout { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 14px; min-height: 0; }
+  .now-playing-art { width: min(180px, 30vh, 40vw); aspect-ratio: 1; display: grid; place-items: center; overflow: hidden; border-radius: 8px; background: var(--music-raised); color: var(--music-muted); }
   .now-playing-art img { width: 100%; height: 100%; object-fit: cover; }
   .now-playing-art ha-icon { --mdc-icon-size: 42px; }
-  .now-playing-details { display: grid; gap: 6px; min-width: 0; width: 100%; text-align: center; }
+  .now-playing-details { display: grid; gap: 6px; min-width: 0; width: 100%; text-align: left; }
   .playback-state { color: var(--music-muted); font-size: 13px; text-transform: uppercase; letter-spacing: .08em; }
   .now-playing-title { display: -webkit-box; overflow: hidden; color: var(--music-text); font-size: 28px; font-weight: 650; line-height: 1.12; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; }
   .now-playing-subtitle { display: -webkit-box; overflow: hidden; color: var(--music-muted); font-size: 21px; line-height: 1.2; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; }
   .now-playing-controls { justify-content: space-between; margin: 0; }
-  .playback-controls, .utility-controls { display: flex; align-items: center; gap: 7px; }
+  .playback-controls { display: flex; align-items: center; gap: 14px; }
+  .utility-controls { display: flex; align-items: center; gap: 7px; }
   .utility-controls { gap: 7px; }
   .utility-controls .repeat-control { margin-left: 14px; }
   .repeat-control.active { border-color: var(--music-accent); color: var(--music-accent); }
@@ -56,10 +57,9 @@ const cardStyles = `
   .control.danger { border-color: var(--error-color, #ff8f8f); color: var(--error-color, #ff8f8f); }
   .flyout-body .speaker-sheet, .flyout-body .playlist-sheet { display: block; margin: 0; padding: 0; border: 0; background: transparent; }
   .flyout-body .speaker-sheet .panel-header, .flyout-body .playlist-sheet .panel-header { display: none; }
-  .volume-flyout-body { display: grid; place-items: center; align-content: center; gap: 18px; min-height: 100%; text-align: center; }
-  .volume-flyout-body output { color: var(--music-text); font-size: 24px; font-weight: 650; }
-  .volume-slider-flyout { width: 56px; height: min(250px, 60%); writing-mode: vertical-lr; direction: rtl; accent-color: var(--music-accent); }
-  .volume-scale { display: flex; flex-direction: column; justify-content: space-between; height: min(250px, 60%); color: var(--music-muted); font-size: 13px; }
+  .volume-flyout-body { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; min-height: 100%; }
+  .volume-flyout-body output { justify-self: end; color: var(--music-text); font-size: 24px; font-weight: 650; }
+  .volume-slider-flyout { width: 40px; height: 80%; justify-self: center; --control-slider-color: var(--music-accent); --control-slider-thickness: 40px; }
   .now-playing-screen .playback > .queue, .now-playing-screen .playback [data-control="shuffle"], .now-playing-screen .playback [data-control="speaker"], .now-playing-screen .playback [data-control="playlist"], .now-playing-screen .playback .volume-control { display: none; }
   .queue-list, .speaker-list, .playlist-list { min-height: 0; overflow: auto; overscroll-behavior: contain; }
   .queue-row, .speaker-row, .playlist-list > .control { min-height: var(--music-list-row-height); }
@@ -132,7 +132,7 @@ const cardStyles = `
   .back-button ha-icon { --mdc-icon-size: 18px; }
   @media (prefers-reduced-motion: reduce) { .media-row, .back-button, .control, .queue-action { transition: none; } }
   @media (prefers-reduced-motion: reduce) { .media-row, .back-button, .control, .queue-action { transition: none; } }
-  @media (max-width: 680px) { .search-layout, .playback { grid-template-columns: 1fr; } .playback { gap: 12px; } .top-menu { grid-template-columns: minmax(0, 1fr) auto; gap: 6px; } .top-menu .menu-label { max-width: 96px; } .flyout { width: min(100%, 440px); } }
+  @media (max-width: 680px) { .search-layout, .playback { grid-template-columns: 1fr; } .playback { gap: 12px; } .top-menu { grid-template-columns: minmax(0, 1fr) auto; gap: 6px; } .flyout { width: min(100%, 440px); } }
 `;
 
 interface BrowseState {
@@ -416,10 +416,16 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
   private renderVolumeFlyout(): string {
     const attributes = this.config ? this._hass?.states[this.config.player]?.attributes ?? {} : {};
     const volume = Math.max(0, Math.min(100, Math.round(Number(attributes.volume_level ?? 0) * 100)));
-    return `<div class="volume-flyout-body"><output data-volume-value>${volume}%</output><input class="volume-slider-flyout" data-volume type="range" min="0" max="100" value="${volume}" aria-label="Volume"><span class="volume-scale"><span>100</span><span>0</span></span></div>`;
+    return `<div class="volume-flyout-body"><ha-control-slider class="volume-slider-flyout" data-volume min="0" max="100" step="1" value="${volume}" vertical show-handle tooltip-mode="never" aria-label="Volume"></ha-control-slider><output data-volume-value>${volume}%</output></div>`;
   }
 
   private getSpeakerLabel(): string {
+    const currentPlayer = this.speakerState.players?.find((player) => player.player_id === this.musicAssistantPlayerId);
+    const groupedPlayerIds = currentPlayer ? [...new Set([currentPlayer.player_id, ...(currentPlayer.group_members ?? []), ...(currentPlayer.synced_to ? [currentPlayer.synced_to] : [])])] : [];
+    const groupedNames = groupedPlayerIds
+      .map((playerId) => this.speakerState.players?.find((player) => player.player_id === playerId)?.name)
+      .filter((name): name is string => typeof name === 'string' && name.trim().length > 0);
+    if (groupedNames.length > 0) return groupedNames.join(' + ');
     const configuredName = this.config ? this._hass?.states[this.config.player]?.attributes.friendly_name : undefined;
     if (typeof configuredName === 'string' && configuredName.trim()) return configuredName.trim();
     return this.musicAssistantPlayerId ?? 'Speaker';
@@ -438,19 +444,22 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
       || player?.state === 'playing'
       || player?.state === 'paused';
     const title = player ? titleValue || (hasCurrentItem ? 'Now playing' : 'Nothing playing') : 'Player unavailable';
-    const artist = player ? String(attributes.media_artist ?? attributes.media_album_name ?? (hasCurrentItem ? 'Unknown artist' : 'Choose a song to start playback')) : 'The configured entity is not available';
+    const artistValue = typeof attributes.media_artist === 'string' ? attributes.media_artist.trim() : '';
+    const currentArtist = typeof this.musicAssistantCurrentMedia?.artist === 'string' ? this.musicAssistantCurrentMedia.artist.trim() : '';
+    const artist = artistValue || currentArtist;
     const image = typeof attributes.entity_picture === 'string' ? attributes.entity_picture : undefined;
     const isPlaying = player?.state === 'playing';
     const position = Number(attributes.media_position ?? 0);
     const duration = Number(attributes.media_duration ?? 0);
     const repeat = String(attributes.repeat ?? 'off').toLowerCase();
     const favorite = this.musicAssistantCurrentMedia?.is_favorite === true;
+    const favoriteUri = typeof this.musicAssistantCurrentMedia?.uri === 'string' ? this.musicAssistantCurrentMedia.uri.trim() : '';
     const favoriteAvailable = this.musicAssistantCurrentMedia !== undefined
       && this.musicAssistantCurrentMedia !== null
-      && (!favorite || (this.musicAssistantCurrentMedia.library_item_id !== undefined && !!this.musicAssistantCurrentMedia.media_type));
+      && (favorite ? (this.musicAssistantCurrentMedia.library_item_id !== undefined && !!this.musicAssistantCurrentMedia.media_type) : favoriteUri.length > 0);
     const repeatIcon = repeat === 'one' ? 'repeat-once' : repeat === 'all' ? 'repeat' : 'repeat-off';
     const repeatClass = repeat === 'off' ? 'muted' : 'active';
-    return `<section class="playback" aria-label="Now playing"><div class="now-playing-layout"><span class="now-playing-art">${image ? `<img src="${escapeHtml(image)}" alt="">` : '<ha-icon icon="mdi:music-note"></ha-icon>'}</span><div class="now-playing-details"><span class="playback-state">${isPlaying ? 'Now playing' : 'Paused'}</span><span class="now-playing-title">${escapeHtml(title)}</span><span class="now-playing-subtitle">${escapeHtml(artist)}</span></div></div><div class="timeline"><span>${formatDuration(position)}</span><input class="progress" data-seek type="range" min="0" max="${duration || 1}" value="${Math.min(position, duration || 1)}" aria-label="Playback position"><span>${formatDuration(duration)}</span></div><div class="controls now-playing-controls"><span class="playback-controls"><button class="control primary" data-control="play-pause" type="button" aria-label="${isPlaying ? 'Pause' : 'Play'}"><ha-icon icon="mdi:${isPlaying ? 'pause' : 'play'}"></ha-icon></button><button class="control" data-control="next" type="button" aria-label="Next track"><ha-icon icon="mdi:skip-next"></ha-icon></button></span><span class="utility-controls"><button class="control favorite-control" data-control="favorite" type="button" aria-pressed="${favorite}" aria-label="${favorite ? 'Remove from favorites' : 'Add to favorites'}" ${favoriteAvailable ? '' : 'disabled'}><ha-icon icon="mdi:${favorite ? 'heart' : 'heart-outline'}"></ha-icon></button><button class="control repeat-control ${repeatClass}" data-control="repeat" type="button" aria-label="Change repeat mode" aria-pressed="${repeat !== 'off'}"><ha-icon icon="mdi:${repeatIcon}"></ha-icon></button><button class="control" data-control="volume" type="button" aria-label="Open volume" title="Open volume"><ha-icon icon="mdi:volume-high"></ha-icon></button></span></div></section>`;
+    return `<section class="playback" aria-label="Now playing"><div class="now-playing-layout"><span class="now-playing-art">${image ? `<img src="${escapeHtml(image)}" alt="">` : '<ha-icon icon="mdi:music-note"></ha-icon>'}</span><div class="now-playing-details"><span class="playback-state">${isPlaying ? 'Now playing' : 'Paused'}</span><span class="now-playing-title">${escapeHtml(title)}</span>${artist ? `<span class="now-playing-subtitle">${escapeHtml(artist)}</span>` : ''}</div></div><div class="timeline"><span>${formatDuration(position)}</span><input class="progress" data-seek type="range" min="0" max="${duration || 1}" value="${Math.min(position, duration || 1)}" aria-label="Playback position"><span>${formatDuration(duration)}</span></div><div class="controls now-playing-controls"><span class="playback-controls"><button class="control primary" data-control="play-pause" type="button" aria-label="${isPlaying ? 'Pause' : 'Play'}"><ha-icon icon="mdi:${isPlaying ? 'pause' : 'play'}"></ha-icon></button><button class="control" data-control="next" type="button" aria-label="Next track"><ha-icon icon="mdi:skip-next"></ha-icon></button></span><span class="utility-controls"><button class="control favorite-control" data-control="favorite" type="button" aria-pressed="${favorite}" aria-label="${favorite ? 'Remove from favorites' : 'Add to favorites'}" ${favoriteAvailable ? '' : 'disabled'}><ha-icon icon="mdi:${favorite ? 'heart' : 'heart-outline'}"></ha-icon></button><button class="control repeat-control ${repeatClass}" data-control="repeat" type="button" aria-label="Change repeat mode" aria-pressed="${repeat !== 'off'}"><ha-icon icon="mdi:${repeatIcon}"></ha-icon></button><button class="control" data-control="volume" type="button" aria-label="Open volume" title="Open volume"><ha-icon icon="mdi:volume-high"></ha-icon></button></span></div></section>`;
   }
 
   private renderSpeakerSheet(): string {
@@ -631,14 +640,18 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
     });
     this.root.addEventListener('input', (event) => {
       const target = event.target as HTMLInputElement;
-      if (target.matches('[data-volume]')) {
-        const value = this.root.querySelector<HTMLOutputElement>('[data-volume-value]');
-        if (value) value.textContent = `${target.value}%`;
-        return;
-      }
       if (!target.matches('[data-search]')) return;
       this.clearSearchTimer();
       this.searchTimer = setTimeout(() => void this.runSearch(target.value), 350);
+    });
+    this.root.addEventListener('slider-moved', (event) => {
+      const target = event.target as HTMLElement;
+      if (!target.matches('[data-volume]')) return;
+      const value = (event as CustomEvent<{ value?: number }>).detail?.value;
+      if (typeof value === 'number') {
+        const output = this.root.querySelector<HTMLOutputElement>('[data-volume-value]');
+        if (output) output.textContent = `${Math.round(value)}%`;
+      }
     });
     this.root.addEventListener('change', (event) => {
       const target = event.target as HTMLInputElement;
@@ -646,9 +659,15 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
         const { queueId } = await this.getNativeControlContext();
         await seekMusicAssistantQueue(this.getMusicAssistantTransport(), queueId, Number(target.value));
       });
-      if (target.matches('[data-volume]')) void this.runAction(async () => {
+    });
+    this.root.addEventListener('value-changed', (event) => {
+      const target = event.target as HTMLElement & { value?: number };
+      if (!target.matches('[data-volume]')) return;
+      const value = typeof target.value === 'number' ? target.value : Number((event as CustomEvent<{ value?: number }>).detail?.value);
+      if (!Number.isFinite(value)) return;
+      void this.runAction(async () => {
         const { playerId } = await this.getNativeControlContext();
-        await setMusicAssistantVolume(this.getMusicAssistantTransport(), playerId, Number(target.value));
+        await setMusicAssistantVolume(this.getMusicAssistantTransport(), playerId, value);
       });
     });
   }
@@ -815,13 +834,14 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
       return;
     }
     if (control === 'favorite') {
-      const { playerId } = await this.getNativeControlContext();
       const media = this.musicAssistantCurrentMedia;
       if (media?.is_favorite === true) {
         if (media.library_item_id === undefined || !media.media_type) throw new Error('Music Assistant did not provide a removable library identity for this favorite.');
         await removeMusicAssistantFavorite(this.getMusicAssistantTransport(), media.media_type, media.library_item_id);
       } else {
-        await addCurrentMusicAssistantItemToFavorites(this.getMusicAssistantTransport(), playerId);
+        const uri = typeof media?.uri === 'string' ? media.uri.trim() : '';
+        if (!uri) throw new Error('Music Assistant did not provide a URI for the current item.');
+        await addMusicAssistantFavorite(this.getMusicAssistantTransport(), uri);
       }
       await this.loadQueue();
       return;

@@ -85,10 +85,10 @@ describe('MusicAssistantCard', () => {
     expect(card.shadowRoot?.querySelector('[data-control="shuffle"]')).toBeNull();
 
     card.shadowRoot?.querySelector<HTMLElement>('[data-control="volume"]')?.click();
-    const slider = card.shadowRoot?.querySelector<HTMLInputElement>('[data-volume]');
-    expect(slider?.value).toBe('65');
-    slider!.value = '80';
-    slider!.dispatchEvent(new Event('input', { bubbles: true }));
+    const slider = card.shadowRoot?.querySelector<HTMLElement>('[data-volume]');
+    expect(slider?.tagName).toBe('HA-CONTROL-SLIDER');
+    expect(slider?.getAttribute('value')).toBe('65');
+    slider!.dispatchEvent(new CustomEvent('slider-moved', { bubbles: true, composed: true, detail: { value: 80 } }));
     expect(card.shadowRoot?.querySelector('[data-volume-value]')?.textContent).toBe('80%');
   });
 
@@ -111,7 +111,7 @@ describe('MusicAssistantCard', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(card.shadowRoot?.querySelector('.now-playing-subtitle')?.textContent).toBe('Unknown artist');
+    expect(card.shadowRoot?.querySelector('.now-playing-subtitle')).toBeNull();
     expect(card.shadowRoot?.textContent).not.toContain('Choose a song to start playback');
 
     card.hass = {
@@ -125,7 +125,7 @@ describe('MusicAssistantCard', () => {
         },
       },
     };
-    expect(card.shadowRoot?.querySelector('.now-playing-subtitle')?.textContent).toBe('Unknown artist');
+    expect(card.shadowRoot?.querySelector('.now-playing-subtitle')).toBeNull();
     expect(card.shadowRoot?.textContent).not.toContain('Choose a song to start playback');
   });
 
@@ -170,6 +170,13 @@ describe('MusicAssistantCard', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(card.shadowRoot?.querySelector<HTMLButtonElement>('[data-control="favorite"]')?.disabled).toBe(false);
+    card.shadowRoot?.querySelector<HTMLElement>('[data-control="favorite"]')?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(fetchMock.mock.calls.map((call) => JSON.parse(String(call[1]?.body)))).toContainEqual({
+      message_id: expect.any(String),
+      command: 'music/favorites/add_item',
+      args: { item: 'library://track/1' },
+    });
     vi.unstubAllGlobals();
   });
 
@@ -250,6 +257,7 @@ describe('MusicAssistantCard', () => {
 
     expect(card.shadowRoot?.querySelector('[data-speaker-id="media_player.hidden"]')).toBeNull();
     expect(card.shadowRoot?.querySelector('[data-speaker-id="media_player.offline"]')).toBeNull();
+    expect(card.shadowRoot?.querySelector('[data-control="speaker"] .menu-label')?.textContent).toBe('Living Room + Office');
     card.shadowRoot?.querySelector<HTMLElement>('[data-speaker-id="media_player.office"]')?.click();
     card.shadowRoot?.querySelector<HTMLElement>('[data-speaker-id="media_player.bedroom"]')?.click();
     card.shadowRoot?.querySelector<HTMLElement>('[data-speaker-action="apply"]')?.click();

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { HomeAssistant } from '../home-assistant';
 import {
-  addCurrentMusicAssistantItemToFavorites,
+  addMusicAssistantFavorite,
   addMusicAssistantPlayerToGroup,
   addMusicAssistantPlaylistTracks,
   browseMusicAssistant,
@@ -121,7 +121,7 @@ describe('Music Assistant adapters', () => {
     await addMusicAssistantPlayerToGroup(transport, 'player-1', 'player-2');
     await removeMusicAssistantPlayerFromGroup(transport, 'player-2');
     await removeMusicAssistantPlayersFromGroup(transport, ['player-2', 'player-3']);
-    await addCurrentMusicAssistantItemToFavorites(transport, 'player-1');
+    await addMusicAssistantFavorite(transport, 'library://track/1');
     await removeMusicAssistantFavorite(transport, 'track', 'library-track-1');
     await listMusicAssistantPlaylists(transport, { search: 'mix', limit: 10, offset: 20 });
     await createMusicAssistantPlaylist(transport, 'New mix', 'builtin');
@@ -137,7 +137,7 @@ describe('Music Assistant adapters', () => {
       ['players/cmd/group', { player_id: 'player-1', target_player: 'player-2' }],
       ['players/cmd/ungroup', { player_id: 'player-2' }],
       ['players/cmd/ungroup_many', { player_ids: ['player-2', 'player-3'] }],
-      ['players/add_currently_playing_to_favorites', { player_id: 'player-1' }],
+      ['music/favorites/add_item', { item: 'library://track/1' }],
       ['music/favorites/remove_item', { media_type: 'track', library_item_id: 'library-track-1' }],
       ['music/playlists/library_items', { search: 'mix', limit: 10, offset: 20 }],
       ['music/playlists/create_playlist', { name: 'New mix', provider_instance_or_domain: 'builtin' }],

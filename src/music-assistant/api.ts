@@ -172,8 +172,8 @@ export function transferMusicAssistantQueue(
   });
 }
 
-export function addCurrentMusicAssistantItemToFavorites(transport: MusicAssistantTransport, playerId: string): Promise<null> {
-  return transport.command<null>('players/add_currently_playing_to_favorites', { player_id: playerId });
+export function addMusicAssistantFavorite(transport: MusicAssistantTransport, uri: string): Promise<null> {
+  return transport.command<null>('music/favorites/add_item', { item: uri });
 }
 
 export function removeMusicAssistantFavorite(transport: MusicAssistantTransport, mediaType: string, libraryItemId: string | number): Promise<null> {
