@@ -36,6 +36,12 @@ npm run build
 Publish releases with the GitHub CLI. Make sure the CLI is installed and authenticated first:
 
 ```powershell
+winget install --id GitHub.cli
+```
+
+Close and reopen PowerShell after installation, then authenticate:
+
+```powershell
 gh auth login
 gh auth status
 ```
