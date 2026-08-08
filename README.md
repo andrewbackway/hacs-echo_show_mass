@@ -23,13 +23,13 @@ npm test
 npm run build
 ```
 
-The distributable file is written to `dist/music-assistant-card.js`.
+The distributable file is written to the repository root as `music-assistant-card.js` for HACS. The same build also writes the preview bundle to `dist/`.
 
 The local fixture at `http://127.0.0.1:5173/` (or the next available Vite port) includes representative browse, search, playback, and queue data for browser smoke testing. The card was verified at the 960x480 Echo Show reference layout and at a narrow responsive layout.
 
 ## GitHub and HACS deployment
 
-The GitHub repository is [andrewbackway/hacs-echo_show_mass](https://github.com/andrewbackway/hacs-echo_show_mass). The repository is structured as a HACS dashboard frontend repository. The built file is `dist/music-assistant-card.js`, which is committed for HACS to discover, and the HACS metadata is in `hacs.json`.
+The GitHub repository is [andrewbackway/hacs-echo_show_mass](https://github.com/andrewbackway/hacs-echo_show_mass). The repository is structured as a HACS dashboard frontend repository. The built file is `music-assistant-card.js` at the repository root, which is committed for HACS to discover, and the HACS metadata is in `hacs.json`.
 
 ### Publish a release
 
@@ -42,7 +42,7 @@ npm run check
 npm run build
 ```
 
-Commit the source and generated `dist/music-assistant-card.js` output, push the branch to GitHub, and create a GitHub release with a semantic version tag such as `v0.1.0`. HACS scans `dist/` for dashboard JavaScript and installs the tagged repository version. When the card changes, publish a new tag and release rather than asking users to download files manually.
+Commit the source and generated `music-assistant-card.js` output, push the branch to GitHub, and create a GitHub release with a semantic version tag such as `v0.1.0`. HACS installs the tagged repository version and uses the root-level dashboard JavaScript. When the card changes, publish a new tag and release rather than asking users to download files manually.
 
 ### Install through HACS
 
