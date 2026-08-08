@@ -7,6 +7,7 @@ import type {
 import { browseMedia, type MediaBrowseResponse, type MediaItem } from './music-assistant/media-browser';
 import { flattenSearchResults, searchMusicAssistant, type SearchItem, type SearchResponse } from './music-assistant/search';
 import { getQueue, type QueueDetails, type QueueItem } from './music-assistant/queue';
+import './editor';
 
 const CARD_TAG = 'music-assistant-card';
 const ROOT_MEDIA_ID = 'media-source://';
@@ -86,6 +87,22 @@ interface QueueState {
 }
 
 export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
+  static getConfigElement(): HTMLElement {
+    return document.createElement('music-assistant-card-editor');
+  }
+
+  static getStubConfig(): MusicAssistantCardConfig {
+    return {
+      type: 'custom:music-assistant-card',
+      player: 'media_player.living_room',
+      config_entry_id: '',
+      layout: 'two-column',
+      show_search: true,
+      show_queue: true,
+      click_action: 'play',
+    };
+  }
+
   private config?: MusicAssistantCardConfig;
   private _hass?: HomeAssistant;
   private readonly root: ShadowRoot;

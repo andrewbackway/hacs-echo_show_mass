@@ -1,6 +1,6 @@
 # Music Assistant Card
 
-A HACS-installable custom Lovelace card for browsing and controlling Music Assistant from Home Assistant. The initial layout is designed for an Echo Show 5 landscape viewport at 960x480 and adapts to narrower screens.
+A custom Lovelace card for Home Assistant that lets you browse Music Assistant media, search your library, control playback, and manage the playback queue from an Echo Show-friendly interface. It is designed for a 960x480 landscape viewport and adapts to narrower screens.
 
 ## Current status
 
