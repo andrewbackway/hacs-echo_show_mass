@@ -1,5 +1,5 @@
 {
-  "name": "Music Assistant Card",
+  "name": "Echo Show Music Assistant Card",
   "content_in_root": false,
   "filename": "music-assistant-card.js",
   "render_readme": true,

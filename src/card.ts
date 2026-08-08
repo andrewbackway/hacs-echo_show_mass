@@ -372,7 +372,7 @@ function escapeHtml(value: string): string {
 
 if (!customElements.get(CARD_TAG)) customElements.define(CARD_TAG, MusicAssistantCard);
 window.customCards = window.customCards ?? [];
-if (!window.customCards.some((card) => card.type === CARD_TAG)) window.customCards.push({ type: CARD_TAG, name: 'Music Assistant Card', description: 'Browse and control Music Assistant from Home Assistant.', preview: true });
+if (!window.customCards.some((card) => card.type === CARD_TAG)) window.customCards.push({ type: CARD_TAG, name: 'Echo Show Music Assistant Card', description: 'Browse and control Music Assistant from Home Assistant.', preview: true });
 
 declare global {
   interface Window { customCards?: Array<{ type: string; name: string; description: string; preview?: boolean }> }

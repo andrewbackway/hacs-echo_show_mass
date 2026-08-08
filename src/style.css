@@ -26,34 +26,4 @@ main { display: grid; grid-template-columns: 292px minmax(0, 1fr); gap: 20px; al
 .canvas { overflow: auto; min-height: 480px; background: #101416; }
 .canvas > music-assistant-card { display: block; min-width: 640px; }
 @media (max-width: 820px) { #app { padding: 24px 16px; } main { grid-template-columns: 1fr; } .inspector { order: 1; } .stage { order: 0; } header { align-items: flex-start; flex-direction: column; } }
-@media (max-width: 680px) { .canvas { min-height: 0; } .canvas > music-assistant-card { min-width: 0; } }:root {
-  color-scheme: dark;
-  background: #0b0f10;
-  font-family: 'Segoe UI', sans-serif;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  min-width: 320px;
-  min-height: 100vh;
-  margin: 0;
-  background: #0b0f10;
-  color: #f2f6f5;
-}
-
-#app {
-  width: min(960px, 100%);
-  min-height: 480px;
-  margin: 0 auto;
-  padding: 16px;
-  background: #101416;
-}
-
-@media (max-width: 680px) {
-  #app {
-    padding: 10px;
-  }
-}
+@media (max-width: 680px) { .canvas { min-height: 0; } .canvas > music-assistant-card { min-width: 0; } }

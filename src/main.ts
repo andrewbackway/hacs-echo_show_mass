@@ -17,6 +17,7 @@ if (app) {
   };
   const applyConfig = (next: MusicAssistantCardConfig): void => { config = { ...config, ...next }; card.setConfig(config); };
   editor.setConfig(config);
+  editor.hass = previewHass;
   card.setConfig(config);
   card.hass = previewHass;
   editor.addEventListener('config-changed', (event) => applyConfig((event as CustomEvent<{ config: MusicAssistantCardConfig }>).detail.config));

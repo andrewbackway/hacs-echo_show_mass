@@ -3,6 +3,7 @@ import type { MusicAssistantCardConfig } from './home-assistant';
 const EDITOR_TAG = 'music-assistant-card-editor';
 
 export class MusicAssistantCardEditor extends HTMLElement {
+  private _hass?: { states: Record<string, { entity_id: string; attributes: Record<string, unknown> }> };
   private config: MusicAssistantCardConfig = {
     type: 'custom:music-assistant-card', player: 'media_player.living_room', config_entry_id: '',
     layout: 'two-column', show_search: true, show_queue: true, click_action: 'play',
@@ -13,7 +14,20 @@ export class MusicAssistantCardEditor extends HTMLElement {
     this.render();
   }
 
+  set hass(hass: { states: Record<string, { entity_id: string; attributes: Record<string, unknown> }> }) {
+    this._hass = hass;
+    this.render();
+  }
+
   private render(): void {
+    const players = Object.values(this._hass?.states ?? {})
+      .filter((state) => state.entity_id.startsWith('media_player.'))
+      .sort((left, right) => left.entity_id.localeCompare(right.entity_id));
+    const configuredPlayerAvailable = players.some((state) => state.entity_id === this.config.player);
+    const playerOptions = [
+      ...(!configuredPlayerAvailable && this.config.player ? [{ entity_id: this.config.player, name: 'Configured entity' }] : []),
+      ...players.map((state) => ({ entity_id: state.entity_id, name: String(state.attributes.friendly_name ?? state.entity_id) })),
+    ];
     this.innerHTML = `
       <style>
         :host { display: block; color: var(--primary-text-color, #202526); font-family: var(--paper-font-body1_-_font-family, sans-serif); }
@@ -28,7 +42,7 @@ export class MusicAssistantCardEditor extends HTMLElement {
         .hint { margin: -2px 0 0; color: var(--secondary-text-color, #667174); font-size: 12px; line-height: 1.4; }
       </style>
       <form class="editor" aria-label="Music Assistant card settings">
-        <div class="field"><label for="player">Player entity</label><input id="player" name="player" value="${escapeHtml(this.config.player)}" placeholder="media_player.living_room" required><p class="hint">The Music Assistant player or synchronized group to control.</p></div>
+        <div class="field"><label for="player">Player entity</label><select id="player" name="player" required>${playerOptions.length === 0 ? `<option value="${escapeHtml(this.config.player)}">${escapeHtml(this.config.player)} (enter in YAML)</option>` : playerOptions.map((player) => `<option value="${escapeHtml(player.entity_id)}" ${player.entity_id === this.config.player ? 'selected' : ''}>${escapeHtml(player.name)} · ${escapeHtml(player.entity_id)}</option>`).join('')}</select><p class="hint">Choose a Music Assistant player or synchronized group from Home Assistant.</p></div>
         <div class="field"><label for="entry">Music Assistant config entry ID</label><input id="entry" name="config_entry_id" value="${escapeHtml(this.config.config_entry_id)}" placeholder="01JEXNDHT21V0BHJXM7A5SZANV" required><p class="hint">Used for authenticated Music Assistant search requests.</p></div>
         <div class="field"><label for="action">When a song is selected</label><select id="action" name="click_action"><option value="play" ${this.config.click_action === 'play' ? 'selected' : ''}>Play now</option><option value="queue" ${this.config.click_action === 'queue' ? 'selected' : ''}>Add to queue</option></select></div>
         <fieldset><legend>Show in card</legend><label class="check"><input type="checkbox" name="show_search" ${this.config.show_search !== false ? 'checked' : ''}> Global search</label><label class="check"><input type="checkbox" name="show_queue" ${this.config.show_queue !== false ? 'checked' : ''}> Playback queue</label></fieldset>

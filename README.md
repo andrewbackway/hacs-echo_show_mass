@@ -1,4 +1,4 @@
-# Music Assistant Card
+# Echo Show Music Assistant Card
 
 A custom Lovelace card for Home Assistant that lets you browse Music Assistant media, search your library, control playback, and manage the playback queue from an Echo Show-friendly interface. It is designed for a 960x480 landscape viewport and adapts to narrower screens.
 
