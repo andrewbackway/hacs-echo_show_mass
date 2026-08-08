@@ -46,6 +46,13 @@ gh auth login
 gh auth status
 ```
 
+If an already-open PowerShell still reports that `gh` is not recognized, refresh its `PATH` manually:
+
+```powershell
+$env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
+gh --version
+```
+
 Then update the version in `package.json`, run the checks above, and publish the commit and release. Replace `0.1.4` with the next semantic version:
 
 ```powershell
@@ -60,6 +67,8 @@ gh release create "v$version" --title "v$version" --generate-notes
 ```
 
 On Bash, use `version=0.1.4` and `${version}` instead of the PowerShell `$version` syntax. HACS installs the tagged repository version and uses the root-level dashboard JavaScript. When the card changes, publish a new tag and release rather than asking users to download files manually.
+
+To check an existing release instead of creating it again, run `gh release view "v$version"`.
 
 ### Install through HACS
 
