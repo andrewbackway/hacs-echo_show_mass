@@ -46,6 +46,19 @@ describe('Music Assistant adapters', () => {
     vi.unstubAllGlobals();
   });
 
+  it('preserves plain-text and null ingress failures as useful errors', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response('Internal server error', { status: 500 }))
+      .mockResolvedValueOnce(new Response('null', { status: 500, headers: { 'Content-Type': 'application/json' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    const transport = createMusicAssistantHttpTransport('/api/hassio_ingress/music-assistant');
+
+    await expect(transport.command('players/add_currently_playing_to_favorites')).rejects.toThrow('Internal server error');
+    await expect(transport.command('player_queues/clear')).rejects.toThrow('Music Assistant request failed (500).');
+
+    vi.unstubAllGlobals();
+  });
+
   it('resolves MA players from explicit HA attributes or an unambiguous friendly name', () => {
     const players = [
       { player_id: 'ma-1', name: 'Living Room' },

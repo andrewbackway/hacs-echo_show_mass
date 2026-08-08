@@ -22,9 +22,23 @@ export function createMusicAssistantHttpTransport(ingressPath: string): MusicAss
         }),
       });
 
-      const payload = await response.json() as { error?: string; value?: T } & T;
-      if (!response.ok || payload.error) throw new Error(payload.error ?? `Music Assistant request failed (${response.status}).`);
-      return payload.value === undefined ? payload : payload.value;
+      const body = await response.text();
+      let payload: unknown = body;
+      try {
+        payload = body ? JSON.parse(body) : undefined;
+      } catch {
+      }
+
+      const record = payload !== null && typeof payload === 'object'
+        ? payload as { error?: unknown; value?: T }
+        : undefined;
+      const errorMessage = typeof record?.error === 'string'
+        ? record.error
+        : typeof payload === 'string' && payload.trim()
+          ? payload.trim()
+          : `Music Assistant request failed (${response.status}).`;
+      if (!response.ok || record?.error) throw new Error(errorMessage);
+      return record && 'value' in record ? record.value as T : payload as T;
     },
   };
 }
