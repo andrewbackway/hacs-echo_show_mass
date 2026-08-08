@@ -56,7 +56,7 @@ gh --version
 Then update the version in `package.json`, run the checks above, and publish the commit and release. Replace `0.1.4` with the next semantic version:
 
 ```powershell
-$version = "0.1.4"
+$version = "0.1.11"
 
 git add package.json src music-assistant-card.js dist/music-assistant-card.js
 git commit -m "Release Music Assistant card v$version"
@@ -101,9 +101,10 @@ layout: two-column
 show_search: true
 show_queue: true
 click_action: play
+ingress_path: /d5369777_music_assistant
 ```
 
-The `player` value must be the Music Assistant `media_player` entity or a supported synchronized group. The card automatically discovers the installed add-on through Home Assistant and keeps its generated ingress route in runtime memory only. No server URL, ingress token, or Music Assistant credential is required in YAML. The visual editor allows an incomplete new-card configuration while it is being filled in.
+The `player` value must be the Music Assistant `media_player` entity or a supported synchronized group. `ingress_path` defaults to `/d5369777_music_assistant`; leave it blank to discover the installed add-on through Home Assistant instead. The card keeps the active ingress route in runtime memory only. No server URL, ingress token, or Music Assistant credential is required in YAML. The visual editor allows an incomplete new-card configuration while it is being filled in.
 
 ## Known limitations
 
@@ -120,6 +121,7 @@ layout: two-column
 show_search: true
 show_queue: true
 click_action: play
+ingress_path: /d5369777_music_assistant
 ```
 
-The `player` value is required and may refer to a Music Assistant player or a supported synchronized group exposed by Home Assistant. Music Assistant must be installed as a Home Assistant add-on with ingress enabled. Discovery and all API calls use the authenticated dashboard session.
+The `player` value is required and may refer to a Music Assistant player or a supported synchronized group exposed by Home Assistant. Music Assistant must be installed as a Home Assistant add-on with ingress enabled. Set `ingress_path` to a valid same-origin Home Assistant path, or leave it blank to use automatic discovery. All API calls use the authenticated dashboard session.
