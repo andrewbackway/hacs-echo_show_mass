@@ -6,15 +6,6 @@ A custom Lovelace card for Home Assistant that lets you browse Music Assistant m
 
 The card provides authenticated media-source browsing, expandable containers, breadcrumbs, artwork fallbacks, loading and error states, debounced global search with grouped results, native play or queue actions, current-track metadata, playback controls, progress and volume sliders, and queue viewing. Queue clearing and queue-item playback are supported. Queue removal and reordering are not currently exposed because the public Home Assistant Music Assistant service API does not provide those operations.
 
-## Local preview
-
-```sh
-npm install
-npm run dev
-```
-
-The preview uses a fixture for `media_player.living_room`. Home Assistant supplies the real authenticated connection when the built card is installed in a dashboard.
-
 ## Build
 
 ```sh
@@ -25,7 +16,7 @@ npm run build
 
 The distributable file is written to the repository root as `music-assistant-card.js` for HACS. The same build also writes the preview bundle to `dist/`.
 
-The local fixture at `http://127.0.0.1:5173/` (or the next available Vite port) includes representative browse, search, playback, and queue data for browser smoke testing. The card was verified at the 960x480 Echo Show reference layout and at a narrow responsive layout.
+The card must be validated in a real Home Assistant Lovelace dashboard because its editor depends on Home Assistant frontend components and its data path depends on Home Assistant authentication.
 
 ## GitHub and HACS deployment
 
@@ -78,7 +69,7 @@ show_queue: true
 click_action: play
 ```
 
-The `player` value must be the Music Assistant `media_player` entity or a supported synchronized group. The `config_entry_id` is the Music Assistant integration entry used by global search. Both values are required.
+The `player` value must be the Music Assistant `media_player` entity or a supported synchronized group. The `config_entry_id` is the Music Assistant integration entry used by global search. The visual editor allows an incomplete new-card configuration while it is being filled in; a completed card needs both values.
 
 ## Known limitations
 

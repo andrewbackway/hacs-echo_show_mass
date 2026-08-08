@@ -19,12 +19,26 @@ export async function searchMusicAssistant(
   query: string,
   configEntryId: string,
 ): Promise<SearchResponse> {
-  const result = await hass.callService<SearchResponse>('music_assistant', 'search', {
+  const result = await hass.callService<unknown>('music_assistant', 'search', {
     config_entry_id: configEntryId,
     name: query,
     limit: 12,
   }, undefined, true, true);
-  return result.response ?? {};
+  if (!result.response || typeof result.response !== 'object') return {};
+  const response = result.response as Record<string, unknown>;
+  const normalized: SearchResponse = {};
+  for (const group of Object.keys(response) as SearchGroup[]) {
+    const items = response[group];
+    if (!Array.isArray(items)) continue;
+    normalized[group] = items.filter(isSearchItem);
+  }
+  return normalized;
+}
+
+function isSearchItem(value: unknown): value is SearchItem {
+  if (!value || typeof value !== 'object') return false;
+  const item = value as Partial<SearchItem>;
+  return typeof item.name === 'string' && typeof item.uri === 'string';
 }
 
 export function flattenSearchResults(response: SearchResponse): Array<SearchItem & { group: SearchGroup }> {

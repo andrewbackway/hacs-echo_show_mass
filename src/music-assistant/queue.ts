@@ -27,6 +27,16 @@ export async function getQueue(hass: HomeAssistant, player: string): Promise<Que
   const result = await hass.callService<QueueDetails | Record<string, QueueDetails>>('music_assistant', 'get_queue', undefined, { entity_id: player }, false, true);
   const response = result.response;
   if (!response) return {};
-  if (Array.isArray((response as QueueDetails).items)) return response as QueueDetails;
-  return (response as Record<string, QueueDetails>)[player] ?? {};
+  if (isQueueDetails(response)) return response;
+  if (typeof response === 'object' && response !== null) {
+    const keyed = (response as Record<string, unknown>)[player];
+    return isQueueDetails(keyed) ? keyed : {};
+  }
+  return {};
+}
+
+function isQueueDetails(value: unknown): value is QueueDetails {
+  if (!value || typeof value !== 'object') return false;
+  const details = value as Partial<QueueDetails>;
+  return Array.isArray(details.items);
 }

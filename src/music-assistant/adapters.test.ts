@@ -28,6 +28,12 @@ describe('Music Assistant adapters', () => {
     await expect(browseMedia(createHass())).rejects.toThrow('media browsing is unavailable');
   });
 
+  it('rejects malformed media browse responses', async () => {
+    const callWS = vi.fn().mockResolvedValue({ title: 'Sources', children: [{ title: 'Missing IDs' }] });
+
+    await expect(browseMedia(createHass(undefined, callWS))).rejects.toThrow('invalid media browser response');
+  });
+
   it('generates the Music Assistant search action with the configured entry', async () => {
     const callService = vi.fn().mockResolvedValue({ response: { tracks: [{ name: 'Song', uri: 'demo://song' }] } });
 
@@ -49,6 +55,12 @@ describe('Music Assistant adapters', () => {
       { name: 'Song', uri: 'demo://song', group: 'tracks' },
       { name: 'Album', uri: 'demo://album', group: 'albums' },
     ]);
+  });
+
+  it('drops malformed search groups and items', async () => {
+    const callService = vi.fn().mockResolvedValue({ response: { tracks: [{ name: 'Song', uri: 'demo://song' }, { name: 'Missing URI' }], albums: 'invalid' } });
+
+    await expect(searchMusicAssistant(createHass(callService), 'song', 'entry-id')).resolves.toEqual({ tracks: [{ name: 'Song', uri: 'demo://song' }] });
   });
 
   it('normalizes direct and entity-keyed queue responses', async () => {

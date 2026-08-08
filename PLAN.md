@@ -6,6 +6,10 @@ Build a HACS-installable custom Lovelace card for Music Assistant in Home Assist
 
 The card should let a user browse Music Assistant media, navigate folders or playlists, inspect songs, and start playback without leaving the Home Assistant dashboard.
 
+## Verification status
+
+The repository now has adapter, custom-element, lifecycle, and production-artifact tests. Real Lovelace validation against the supported Home Assistant frontend and live Music Assistant service responses is required before release. Browser screenshot checks must run against a real Home Assistant dashboard.
+
 ## Proposed First Version
 
 ### Layout
@@ -129,12 +133,12 @@ The exact framework is intentionally undecided. A lightweight TypeScript custom 
 - Optimize for touch targets, landscape layout, and readable viewing distance. **Implemented.**
 - Add responsive behavior for narrow screens by stacking the columns. **Implemented.**
 - Add restrained transitions for navigation and playback-state changes. **Implemented.** Includes a reduced-motion fallback.
-- Validate contrast, focus states, and error messaging. **Implemented.** Focus rings, native HA theme variables, and explicit loading/error states are covered in the card styles and browser smoke check.
+- Validate contrast, focus states, and error messaging. **Fixture-covered.** Focus rings, Home Assistant theme variables, and explicit loading/error states are present; live Lovelace accessibility validation remains open.
 
 ### Phase 6: Verification and release
 
 - Add unit tests for media-tree mapping and service-call generation. **Implemented.** `npm test` covers media browsing, search payloads, grouped result flattening, and both queue response shapes.
-- Add browser or component tests for folder navigation, search, queue editing, and playback controls. **Implemented.** The local preview was smoke-tested at the Echo Show reference viewport; queue clearing/playback and controls are rendered through the real custom element.
+- Add browser or component tests for folder navigation, search, queue editing, and playback controls. **Partially implemented.** Custom-element tests cover configuration, action errors, lifecycle races, reconnects, and DOM preservation. The local preview is manually smoke-tested; automated browser screenshots remain open.
 - Test against representative Music Assistant states, missing artwork, unavailable players, empty folders, and service errors. **Implemented for fixture and adapter paths.** Live Home Assistant validation remains environment-dependent.
 - Build the distributable asset and document HACS installation and card configuration. **Implemented.**
 - Complete the full feature set before the first public HACS release. **Implemented for supported public services.** Queue reordering/removal and generic favorite are documented limitations because no public service contract was found for them.

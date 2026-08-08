@@ -4,11 +4,15 @@
 
 Make the card feel like a deliberate, touch-first music controller for an Echo Show 5 landscape display rather than a prototype made from stacked bordered panels. Preserve the existing Home Assistant integration and supported playback behavior while improving hierarchy, density, visual rhythm, and feedback.
 
+## Current status
+
+The card now uses Home Assistant icon elements, delegated event handling, playback-only updates for steady-state `hass` changes, and a production artifact CI gate. Remaining validation must happen inside a real Lovelace dashboard at the 960 x 480 and narrow reference sizes.
+
 ## What Feels Unfinished Today
 
 - The card has too many nested borders and rounded boxes competing for attention.
 - The playback area is visually detached from browsing and leaves a large amount of unused space.
-- Playback buttons use raw text glyphs such as `▶`, `⇄`, and `↻`, which do not form a consistent control language.
+- Playback controls previously used raw text glyphs; production markup now uses Home Assistant `ha-icon` elements. The project intentionally has no standalone preview because it cannot reproduce Home Assistant's component registry or authenticated runtime.
 - The queue is visually flat: the current item, queue actions, and secondary metadata do not have enough hierarchy.
 - Search, breadcrumbs, media rows, and playback controls use nearly the same visual weight.
 - The preview page still contains leftover starter CSS, so it does not provide a clean, trustworthy presentation frame.
