@@ -58,8 +58,8 @@ export class MusicAssistantCardEditor extends HTMLElement {
         </div>
         <div class="field">
           <ha-select id="action" label="When a song is selected">
-            <mwc-list-item value="play">Play now</mwc-list-item>
-            <mwc-list-item value="queue">Add to queue</mwc-list-item>
+            <ha-list-item value="play">Play now</ha-list-item>
+            <ha-list-item value="queue">Add to queue</ha-list-item>
           </ha-select>
         </div>
         <div class="switches" aria-label="Show in card">
