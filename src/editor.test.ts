@@ -24,10 +24,11 @@ function createHass(): HomeAssistant {
 describe('MusicAssistantCardEditor', () => {
   it('uses Home Assistant controls and configures the entity picker', () => {
     const editor = new MusicAssistantCardEditor();
-    editor.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room', config_entry_id: '' });
+    editor.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room' });
     editor.hass = createHass();
 
     expect(editor.querySelector('ha-entity-picker')).toBeTruthy();
+    expect(editor.querySelector('ha-textfield')).toBeTruthy();
     expect(editor.querySelector('ha-select')).toBeTruthy();
     expect(editor.querySelector('ha-switch')).toBeTruthy();
     expect(editor.querySelector('select')).toBeNull();
@@ -47,5 +48,36 @@ describe('MusicAssistantCardEditor', () => {
 
     expect(changes).toHaveLength(1);
     expect(changes[0].detail.config.show_queue).toBe(false);
+    expect(changes[0].detail.config).not.toHaveProperty('config_entry_id');
+  });
+
+  it('persists the selected click action from ha-select', () => {
+    const editor = new MusicAssistantCardEditor();
+    editor.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room' });
+    const changes: CustomEvent[] = [];
+    editor.addEventListener('config-changed', (event) => changes.push(event as CustomEvent));
+
+    const action = editor.querySelector('#action') as HTMLElement & { value?: string };
+    action.value = 'queue';
+    action.dispatchEvent(new Event('selected', { bubbles: true }));
+
+    expect(changes).toHaveLength(1);
+    expect(changes[0].detail.config.click_action).toBe('queue');
+  });
+
+  it('defaults the player to blank and selection action to play now', () => {
+    const editor = new MusicAssistantCardEditor();
+    editor.setConfig({ type: 'custom:music-assistant-card', player: '' });
+
+    expect((editor.querySelector('#player') as HTMLElement & { value?: string }).value).toBe('');
+    expect((editor.querySelector('#action') as HTMLElement & { value?: string }).value).toBe('play');
+    expect((editor.querySelector('#ingress-path') as HTMLElement & { value?: string }).value).toBe('/d5369777_music_assistant');
+  });
+
+  it('preserves a blank ingress path for automatic discovery', () => {
+    const editor = new MusicAssistantCardEditor();
+    editor.setConfig({ type: 'custom:music-assistant-card', player: '', ingress_path: '' });
+
+    expect((editor.querySelector('#ingress-path') as HTMLElement & { value?: string }).value).toBe('');
   });
 });

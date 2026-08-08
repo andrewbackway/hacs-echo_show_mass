@@ -1,4 +1,5 @@
 import type { HomeAssistant, MusicAssistantCardConfig } from './home-assistant';
+import { DEFAULT_MUSIC_ASSISTANT_INGRESS_PATH } from './music-assistant/ingress';
 
 const EDITOR_TAG = 'music-assistant-card-editor';
 
@@ -15,7 +16,7 @@ export class MusicAssistantCardEditor extends HTMLElement {
   private config: MusicAssistantCardConfig = {
     type: 'custom:music-assistant-card',
     player: '',
-    config_entry_id: '',
+    ingress_path: DEFAULT_MUSIC_ASSISTANT_INGRESS_PATH,
     layout: 'two-column',
     show_search: true,
     show_queue: true,
@@ -23,7 +24,10 @@ export class MusicAssistantCardEditor extends HTMLElement {
   };
 
   setConfig(config: MusicAssistantCardConfig): void {
-    this.config = { ...this.config, ...config };
+    const nextConfig = { ...this.config, ...config };
+    if (typeof nextConfig.config_entry_id !== 'string' || !nextConfig.config_entry_id.trim()) delete nextConfig.config_entry_id;
+    if (typeof nextConfig.ingress_path !== 'string') nextConfig.ingress_path = DEFAULT_MUSIC_ASSISTANT_INGRESS_PATH;
+    this.config = nextConfig;
     this.render();
   }
 
@@ -48,7 +52,10 @@ export class MusicAssistantCardEditor extends HTMLElement {
           <ha-entity-picker id="player" label="Player entity"></ha-entity-picker>
           <p class="hint">Choose a Music Assistant player or synchronized group from Home Assistant.</p>
         </div>
-        <p class="hint">Music Assistant connects automatically through the installed add-on's Home Assistant ingress route.</p>
+        <div class="field">
+          <ha-textfield id="ingress-path" label="Music Assistant ingress path"></ha-textfield>
+          <p class="hint">Use the configured path, or leave blank to discover the installed add-on automatically.</p>
+        </div>
         <div class="field">
           <ha-select id="action" label="When a song is selected">
             <mwc-list-item value="play">Play now</mwc-list-item>
@@ -68,6 +75,11 @@ export class MusicAssistantCardEditor extends HTMLElement {
     player.label = 'Player entity';
     this.listenValue(player, 'player');
 
+    const ingressPath = this.getControl('ingress-path');
+    ingressPath.value = this.config.ingress_path ?? DEFAULT_MUSIC_ASSISTANT_INGRESS_PATH;
+    ingressPath.label = 'Music Assistant ingress path';
+    this.listenValue(ingressPath, 'ingress_path');
+
     const action = this.getControl('action');
     action.value = this.config.click_action ?? 'play';
     this.listenValue(action, 'click_action');
@@ -86,10 +98,13 @@ export class MusicAssistantCardEditor extends HTMLElement {
   }
 
   private listenValue(control: HassControl, name: keyof MusicAssistantCardConfig): void {
-    control.addEventListener('value-changed', (event) => {
-      const value = (event as CustomEvent<{ value?: string }>).detail?.value;
+    const updateValue = (event: Event): void => {
+      const detailValue = (event as CustomEvent<{ value?: string }>).detail?.value;
+      const value = typeof detailValue === 'string' ? detailValue : (event.currentTarget as HassControl).value;
       if (typeof value === 'string') this.updateConfig(name, value);
-    });
+    };
+    control.addEventListener('value-changed', updateValue);
+    control.addEventListener('selected', updateValue);
   }
 
   private listenChecked(control: HassControl, name: keyof MusicAssistantCardConfig): void {

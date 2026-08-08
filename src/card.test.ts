@@ -22,11 +22,48 @@ function createHass(callService = vi.fn()): HomeAssistant {
 }
 
 describe('MusicAssistantCard', () => {
+  it('uses blank player and play-now defaults for a new card', () => {
+    expect(MusicAssistantCard.getStubConfig()).toEqual({
+      type: 'custom:music-assistant-card',
+      player: '',
+      ingress_path: '/d5369777_music_assistant',
+      layout: 'two-column',
+      show_search: true,
+      show_queue: true,
+      click_action: 'play',
+    });
+  });
+
   it('renders an ingress setup state before Home Assistant is available', () => {
     const card = new MusicAssistantCard();
     card.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room' } as never);
 
     expect(card.shadowRoot?.textContent).toContain('Music Assistant ingress is unavailable');
+  });
+
+  it('uses a configured ingress path without Supervisor discovery', async () => {
+    const callWS = vi.fn();
+    const card = new MusicAssistantCard();
+    card.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room', ingress_path: '/custom/music-assistant', show_queue: false });
+    card.hass = { ...createHass(), callWS };
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(callWS).not.toHaveBeenCalled();
+    expect((card as unknown as { musicAssistantIngress?: string }).musicAssistantIngress).toBe('/custom/music-assistant');
+  });
+
+  it('falls back to ingress discovery when the configured path is blank', async () => {
+    const callWS = vi.fn((message: Record<string, unknown>) => {
+      if (message.endpoint === '/addons') return Promise.resolve({ addons: [{ name: 'Music Assistant', slug: 'music-assistant' }] });
+      return Promise.resolve({ state: 'started', ingress: true, ingress_url: '/discovered/music-assistant' });
+    }) as unknown as HomeAssistant['callWS'];
+    const card = new MusicAssistantCard();
+    card.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room', ingress_path: '', show_queue: false });
+    card.hass = { ...createHass(), callWS };
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(callWS).toHaveBeenCalledWith({ type: 'supervisor/api', endpoint: '/addons', method: 'get' });
+    expect((card as unknown as { musicAssistantIngress?: string }).musicAssistantIngress).toBe('/discovered/music-assistant');
   });
 
   it('starts on Now Playing and keeps one primary view with one flyout', async () => {
@@ -80,6 +117,8 @@ describe('MusicAssistantCard', () => {
 
     expect(card.shadowRoot?.querySelector('.now-playing-art')).not.toBeNull();
     expect(card.shadowRoot?.querySelector('.now-playing-title')?.textContent).toBe('Long song title');
+    expect(card.shadowRoot?.querySelector('style')?.textContent).toContain('.now-playing-layout { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 28px;');
+    expect(card.shadowRoot?.querySelector('style')?.textContent).toContain('.now-playing-details { display: grid; gap: 6px; min-width: 0; width: 100%; max-width: 80%; justify-self: start;');
     expect(card.shadowRoot?.querySelector('[data-control="speaker"] .menu-label')?.textContent).toBe('Living Room');
     expect(card.shadowRoot?.querySelector('[data-control="repeat"] ha-icon')?.getAttribute('icon')).toBe('mdi:repeat-once');
     expect(card.shadowRoot?.querySelector('[data-control="shuffle"]')).toBeNull();
@@ -88,8 +127,8 @@ describe('MusicAssistantCard', () => {
     const slider = card.shadowRoot?.querySelector<HTMLElement>('[data-volume]');
     expect(slider?.tagName).toBe('HA-CONTROL-SLIDER');
     expect(slider?.getAttribute('value')).toBe('65');
-    slider!.dispatchEvent(new CustomEvent('slider-moved', { bubbles: true, composed: true, detail: { value: 80 } }));
-    expect(card.shadowRoot?.querySelector('[data-volume-value]')?.textContent).toBe('80%');
+    expect(card.shadowRoot?.querySelector('[data-volume-value]')).toBeNull();
+    expect(card.shadowRoot?.querySelector('style')?.textContent).toContain('.flyout[data-flyout="volume"] { width: 33.333%; }');
   });
 
   it('does not show the start-playback prompt for playing or paused media', async () => {
@@ -202,6 +241,11 @@ describe('MusicAssistantCard', () => {
 
     card.shadowRoot?.querySelector<HTMLElement>('[data-control="queue"]')?.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
+    const queueFlyout = card.shadowRoot?.querySelector('[data-flyout="queue"]');
+    expect(queueFlyout?.querySelectorAll('.flyout-header')).toHaveLength(1);
+    expect(queueFlyout?.querySelector('.flyout-header .panel-title')?.textContent).toBe('Queue');
+    expect(queueFlyout?.querySelector('.flyout-body .panel-title')).toBeNull();
+    expect(queueFlyout?.querySelector('.flyout-body .queue-list')).not.toBeNull();
     card.shadowRoot?.querySelector<HTMLElement>('[data-queue-index="1"]')?.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(fetchMock.mock.calls.map((call) => JSON.parse(String(call[1]?.body)))).toContainEqual({
@@ -258,6 +302,7 @@ describe('MusicAssistantCard', () => {
     expect(card.shadowRoot?.querySelector('[data-speaker-id="media_player.hidden"]')).toBeNull();
     expect(card.shadowRoot?.querySelector('[data-speaker-id="media_player.offline"]')).toBeNull();
     expect(card.shadowRoot?.querySelector('[data-control="speaker"] .menu-label')?.textContent).toBe('Living Room + Office');
+    expect(card.shadowRoot?.querySelector('style')?.textContent).toContain('.top-menu .player-action { min-width: 0; justify-content: flex-start; text-align: left;');
     card.shadowRoot?.querySelector<HTMLElement>('[data-speaker-id="media_player.office"]')?.click();
     card.shadowRoot?.querySelector<HTMLElement>('[data-speaker-id="media_player.bedroom"]')?.click();
     card.shadowRoot?.querySelector<HTMLElement>('[data-speaker-action="apply"]')?.click();
@@ -315,7 +360,7 @@ describe('MusicAssistantCard', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Player unavailable')));
     const callService = vi.fn().mockRejectedValue(new Error('Player unavailable'));
     const card = new MusicAssistantCard();
-    card.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room', config_entry_id: 'entry-id', show_queue: false });
+    card.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room', config_entry_id: 'entry-id', ingress_path: '', show_queue: false });
     card.hass = createHass(callService);
     document.body.append(card);
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -333,7 +378,7 @@ describe('MusicAssistantCard', () => {
 
   it('preserves the browse DOM during steady-state Home Assistant updates', async () => {
     const card = new MusicAssistantCard();
-    card.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room', config_entry_id: 'entry-id', show_queue: false });
+    card.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room', config_entry_id: 'entry-id', ingress_path: '', show_queue: false });
     const hass = createHass();
     card.hass = hass;
     document.body.append(card);

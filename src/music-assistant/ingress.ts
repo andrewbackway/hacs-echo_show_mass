@@ -12,6 +12,7 @@ interface AddonListResponse {
 }
 
 const MUSIC_ASSISTANT_NAME = 'music assistant';
+export const DEFAULT_MUSIC_ASSISTANT_INGRESS_PATH = '/d5369777_music_assistant';
 
 function addonList(response: unknown): MusicAssistantAddonOverview[] {
   const candidates = Array.isArray(response) ? response : (response as AddonListResponse | null)?.addons;
