@@ -43,7 +43,7 @@ export class MusicAssistantCardEditor extends HTMLElement {
         .editor { display: grid; gap: 16px; padding: 4px 0; }
         .field { display: grid; gap: 6px; }
         .hint { margin: -2px 0 0; color: var(--secondary-text-color); font-size: 12px; line-height: 1.4; }
-        ha-entity-picker, ha-textfield, ha-select { display: block; width: 100%; }
+        ha-entity-picker, ha-input, ha-select { display: block; width: 100%; }
         .switches { display: grid; gap: 4px; }
         ha-switch { --mdc-typography-body1-font-size: 14px; }
       </style>
@@ -53,7 +53,7 @@ export class MusicAssistantCardEditor extends HTMLElement {
           <p class="hint">Choose a Music Assistant player or synchronized group from Home Assistant.</p>
         </div>
         <div class="field">
-          <ha-textfield id="ingress-path" label="Music Assistant ingress path"></ha-textfield>
+          <ha-input id="ingress-path" label="Music Assistant ingress path"></ha-input>
           <p class="hint">Use the configured path, or leave blank to discover the installed add-on automatically.</p>
         </div>
         <div class="field">
@@ -78,11 +78,11 @@ export class MusicAssistantCardEditor extends HTMLElement {
     const ingressPath = this.getControl('ingress-path');
     ingressPath.value = this.config.ingress_path ?? DEFAULT_MUSIC_ASSISTANT_INGRESS_PATH;
     ingressPath.label = 'Music Assistant ingress path';
-    this.listenValue(ingressPath, 'ingress_path');
+    this.listenTextValue(ingressPath, 'ingress_path');
 
     const action = this.getControl('action');
     action.value = this.config.click_action ?? 'play';
-    this.listenValue(action, 'click_action');
+    this.listenSelect(action, 'click_action');
 
     const showSearch = this.getControl('show-search');
     showSearch.checked = this.config.show_search !== false;
@@ -105,6 +105,40 @@ export class MusicAssistantCardEditor extends HTMLElement {
     };
     control.addEventListener('value-changed', updateValue);
     control.addEventListener('selected', updateValue);
+  }
+
+  private listenTextValue(control: HassControl, name: keyof MusicAssistantCardConfig): void {
+    let lastValue = control.value;
+    const applyValue = (value: unknown): void => {
+      if (typeof value !== 'string' || value === lastValue) return;
+      lastValue = value;
+      this.updateConfig(name, value);
+    };
+    const updateValue = (event: Event): void => {
+      const detailValue = (event as CustomEvent<{ value?: string }>).detail?.value;
+      applyValue(typeof detailValue === 'string' ? detailValue : (event.currentTarget as HassControl).value);
+    };
+    control.addEventListener('value-changed', updateValue);
+    control.addEventListener('input', updateValue);
+    control.addEventListener('change', updateValue);
+  }
+
+  private listenSelect(control: HassControl, name: keyof MusicAssistantCardConfig): void {
+    let lastValue = control.value;
+    const applyValue = (value: unknown): void => {
+      if (typeof value !== 'string' || value === lastValue) return;
+      lastValue = value;
+      this.updateConfig(name, value);
+    };
+    const updateValue = (event: Event): void => {
+      const detailValue = (event as CustomEvent<{ value?: string }>).detail?.value;
+      applyValue(typeof detailValue === 'string' ? detailValue : (event.currentTarget as HassControl).value);
+    };
+    control.addEventListener('value-changed', updateValue);
+    control.addEventListener('selected', updateValue);
+    control.querySelectorAll<HTMLElement>('[value]').forEach((option) => {
+      option.addEventListener('click', () => applyValue(option.getAttribute('value')));
+    });
   }
 
   private listenChecked(control: HassControl, name: keyof MusicAssistantCardConfig): void {

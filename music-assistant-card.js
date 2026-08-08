@@ -4,7 +4,7 @@
         .editor { display: grid; gap: 16px; padding: 4px 0; }
         .field { display: grid; gap: 6px; }
         .hint { margin: -2px 0 0; color: var(--secondary-text-color); font-size: 12px; line-height: 1.4; }
-        ha-entity-picker, ha-textfield, ha-select { display: block; width: 100%; }
+        ha-entity-picker, ha-input, ha-select { display: block; width: 100%; }
         .switches { display: grid; gap: 4px; }
         ha-switch { --mdc-typography-body1-font-size: 14px; }
       </style>
@@ -14,7 +14,7 @@
           <p class="hint">Choose a Music Assistant player or synchronized group from Home Assistant.</p>
         </div>
         <div class="field">
-          <ha-textfield id="ingress-path" label="Music Assistant ingress path"></ha-textfield>
+          <ha-input id="ingress-path" label="Music Assistant ingress path"></ha-input>
           <p class="hint">Use the configured path, or leave blank to discover the installed add-on automatically.</p>
         </div>
         <div class="field">
@@ -27,7 +27,7 @@
           <ha-switch id="show-search">Global search</ha-switch>
           <ha-switch id="show-queue">Playback queue</ha-switch>
         </div>
-      </form>`;let e=this.getControl(`player`);e.hass=this._hass,e.value=this.config.player,e.includeDomains=[`media_player`],e.label=`Player entity`,this.listenValue(e,`player`);let t=this.getControl(`ingress-path`);t.value=this.config.ingress_path??`/d5369777_music_assistant`,t.label=`Music Assistant ingress path`,this.listenValue(t,`ingress_path`);let n=this.getControl(`action`);n.value=this.config.click_action??`play`,this.listenValue(n,`click_action`);let r=this.getControl(`show-search`);r.checked=this.config.show_search!==!1,this.listenChecked(r,`show_search`);let i=this.getControl(`show-queue`);i.checked=this.config.show_queue!==!1,this.listenChecked(i,`show_queue`)}getControl(e){return this.querySelector(`#${e}`)}listenValue(e,t){let n=e=>{let n=e.detail?.value,r=typeof n==`string`?n:e.currentTarget.value;typeof r==`string`&&this.updateConfig(t,r)};e.addEventListener(`value-changed`,n),e.addEventListener(`selected`,n)}listenChecked(e,t){e.addEventListener(`change`,()=>this.updateConfig(t,!!e.checked))}updateConfig(e,t){this.config={...this.config,[e]:t},this.dispatchEvent(new CustomEvent(`config-changed`,{bubbles:!0,composed:!0,detail:{config:this.config}}))}};customElements.get(R)||customElements.define(R,z);var B=`music-assistant-card`,V=`media-source://`,H=`
+      </form>`;let e=this.getControl(`player`);e.hass=this._hass,e.value=this.config.player,e.includeDomains=[`media_player`],e.label=`Player entity`,this.listenValue(e,`player`);let t=this.getControl(`ingress-path`);t.value=this.config.ingress_path??`/d5369777_music_assistant`,t.label=`Music Assistant ingress path`,this.listenTextValue(t,`ingress_path`);let n=this.getControl(`action`);n.value=this.config.click_action??`play`,this.listenSelect(n,`click_action`);let r=this.getControl(`show-search`);r.checked=this.config.show_search!==!1,this.listenChecked(r,`show_search`);let i=this.getControl(`show-queue`);i.checked=this.config.show_queue!==!1,this.listenChecked(i,`show_queue`)}getControl(e){return this.querySelector(`#${e}`)}listenValue(e,t){let n=e=>{let n=e.detail?.value,r=typeof n==`string`?n:e.currentTarget.value;typeof r==`string`&&this.updateConfig(t,r)};e.addEventListener(`value-changed`,n),e.addEventListener(`selected`,n)}listenTextValue(e,t){let n=e.value,r=e=>{typeof e==`string`&&e!==n&&(n=e,this.updateConfig(t,e))},i=e=>{let t=e.detail?.value;r(typeof t==`string`?t:e.currentTarget.value)};e.addEventListener(`value-changed`,i),e.addEventListener(`input`,i),e.addEventListener(`change`,i)}listenSelect(e,t){let n=e.value,r=e=>{typeof e==`string`&&e!==n&&(n=e,this.updateConfig(t,e))},i=e=>{let t=e.detail?.value;r(typeof t==`string`?t:e.currentTarget.value)};e.addEventListener(`value-changed`,i),e.addEventListener(`selected`,i),e.querySelectorAll(`[value]`).forEach(e=>{e.addEventListener(`click`,()=>r(e.getAttribute(`value`)))})}listenChecked(e,t){e.addEventListener(`change`,()=>this.updateConfig(t,!!e.checked))}updateConfig(e,t){this.config={...this.config,[e]:t},this.dispatchEvent(new CustomEvent(`config-changed`,{bubbles:!0,composed:!0,detail:{config:this.config}}))}};customElements.get(R)||customElements.define(R,z);var B=`music-assistant-card`,V=`media-source://`,H=`
   :host { --music-bg: var(--card-background-color, #101416); --music-surface: #171d20; --music-raised: #20282b; --music-line: #2d383b; --music-text: var(--primary-text-color, #f2f6f5); --music-muted: var(--secondary-text-color, #9ba9aa); --music-accent: var(--primary-color, #65d6c7); display: block; color: var(--music-text); font-family: var(--paper-font-body1_-_font-family, 'Segoe UI', sans-serif); }
   .card { min-height: 240px; box-sizing: border-box; padding: 14px; border: 1px solid var(--music-line); border-radius: 12px; background: var(--music-bg); box-shadow: 0 12px 28px rgb(0 0 0 / 24%); }
   .card { --music-card-height: 430px; --music-header-height: 56px; --music-touch-target: 48px; --music-list-row-height: 56px; --music-flyout-width: clamp(360px, 50%, 500px); position: relative; height: min(var(--music-card-height), calc(100dvh - var(--music-dashboard-chrome, 0px))); max-height: calc(100dvh - var(--music-dashboard-chrome, 0px)); overflow: hidden; }
