@@ -4,7 +4,7 @@ A custom Lovelace card for Home Assistant that lets you browse Music Assistant m
 
 ## Current status
 
-The card provides authenticated media-source browsing, expandable containers, breadcrumbs, artwork fallbacks, loading and error states, debounced global search with grouped results, native play or queue actions, current-track metadata, playback controls, progress and volume sliders, and queue viewing. Queue clearing and queue-item playback are supported. Queue removal and reordering are not currently exposed because the public Home Assistant Music Assistant service API does not provide those operations.
+The card provides Home Assistant OAuth authentication, native Music Assistant provider browsing, expandable containers, artwork fallbacks, loading and error states, debounced global search with grouped results, explicit play or queue actions, current-track metadata, playback controls, speaker transfer/grouping, progress and volume sliders, queue viewing, favorites, editable playlist actions, and playlist shuffle. Queue removal and reordering are not currently exposed because the native Music Assistant API does not provide those operations in the verified contract.
 
 ## Build
 
@@ -62,18 +62,18 @@ Add a manual card to a dashboard:
 ```yaml
 type: custom:music-assistant-card
 player: media_player.living_room
-config_entry_id: 01JEXNDHT21V0BHJXM7A5SZANV
+music_assistant_url: http://10.1.0.123:8095
 layout: two-column
 show_search: true
 show_queue: true
 click_action: play
 ```
 
-The `player` value must be the Music Assistant `media_player` entity or a supported synchronized group. The `config_entry_id` is the Music Assistant integration entry used by global search. The visual editor allows an incomplete new-card configuration while it is being filled in; a completed card needs both values.
+The `player` value must be the Music Assistant `media_player` entity or a supported synchronized group. The card authenticates to Music Assistant through Home Assistant OAuth; it does not ask for or store a Music Assistant password or token in YAML. The visual editor allows an incomplete new-card configuration while it is being filled in.
 
 ## Known limitations
 
-The public Home Assistant Music Assistant services currently used by the card expose queue retrieval, clearing, playback, and enqueue behavior, but not generic queue-item removal or reordering. A generic favorite action is also not exposed consistently by the supported media-player service contract, so those controls are intentionally omitted rather than sending unsupported service calls.
+The native Music Assistant API exposes queue retrieval, clearing, playback, enqueue behavior, favorites, playlists, and speaker controls, but not generic queue-item removal or reordering. Favorite removal is enabled only when Music Assistant supplies a reliable library item identity; the card never guesses identifiers from playback URIs.
 
 ## Home Assistant configuration
 
@@ -82,11 +82,11 @@ Install the repository through HACS as a dashboard frontend resource, then add t
 ```yaml
 type: custom:music-assistant-card
 player: media_player.living_room
-config_entry_id: 01JEXNDHT21V0BHJXM7A5SZANV
+music_assistant_url: http://10.1.0.123:8095
 layout: two-column
 show_search: true
 show_queue: true
 click_action: play
 ```
 
-The `player` and `config_entry_id` values are required. `player` may refer to a Music Assistant player or a supported synchronized group exposed by Home Assistant. `config_entry_id` is the Music Assistant integration entry used by the `music_assistant.search` action. The card uses Home Assistant's authenticated connection; it does not ask for or store Music Assistant credentials.
+The `player` value is required and may refer to a Music Assistant player or a supported synchronized group exposed by Home Assistant. `music_assistant_url` defaults to the configured Music Assistant server when omitted. The card uses Home Assistant OAuth and keeps the resulting session token in runtime memory only.

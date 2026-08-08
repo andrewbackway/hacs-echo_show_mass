@@ -1,8 +1,27 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { HomeAssistant } from '../home-assistant';
+import { beginMusicAssistantHomeAssistantOAuth, parseMusicAssistantOAuthCallback } from './auth';
+import {
+  addCurrentMusicAssistantItemToFavorites,
+  addMusicAssistantPlayerToGroup,
+  addMusicAssistantPlaylistTracks,
+  browseMusicAssistant,
+  createMusicAssistantPlaylist,
+  getActiveMusicAssistantQueue,
+  getMusicAssistantPlayers,
+  listMusicAssistantPlaylists,
+  playMusicAssistantMedia,
+  removeMusicAssistantFavorite,
+  searchMusicAssistantApi,
+  setMusicAssistantShuffle,
+  transferMusicAssistantQueue,
+  type MusicAssistantTransport,
+} from './api';
 import { browseMedia } from './media-browser';
 import { getQueue } from './queue';
 import { flattenSearchResults, searchMusicAssistant } from './search';
+import { createMusicAssistantHttpTransport } from './transport';
+import { resolveMusicAssistantPlayer } from './players';
 
 function createHass(callService = vi.fn(), callWS?: HomeAssistant['callWS']): HomeAssistant {
   return {
@@ -13,6 +32,126 @@ function createHass(callService = vi.fn(), callWS?: HomeAssistant['callWS']): Ho
 }
 
 describe('Music Assistant adapters', () => {
+  it('discovers and starts the Home Assistant OAuth flow without handling tokens', async () => {
+    const command = vi.fn()
+      .mockResolvedValueOnce([
+        { provider_id: 'builtin', provider_type: 'builtin', requires_redirect: false },
+        { provider_id: 'homeassistant', provider_type: 'homeassistant', requires_redirect: true },
+      ])
+      .mockResolvedValueOnce({ authorization_url: 'https://ma.example/auth/authorize?state=test' });
+
+    await expect(beginMusicAssistantHomeAssistantOAuth({ command }, 'http://ha.example/oauth-return')).resolves.toEqual({
+      providerId: 'homeassistant',
+      authorizationUrl: 'https://ma.example/auth/authorize?state=test',
+    });
+    expect(command).toHaveBeenNthCalledWith(1, 'auth/providers', {});
+    expect(command).toHaveBeenNthCalledWith(2, 'auth/authorization_url', {
+      provider_id: 'homeassistant',
+      return_url: 'http://ha.example/oauth-return',
+    });
+  });
+
+  it('rejects an unavailable Home Assistant OAuth provider or missing URL', async () => {
+    await expect(beginMusicAssistantHomeAssistantOAuth({
+      command: vi.fn().mockResolvedValue([]),
+    })).rejects.toThrow('OAuth provider is unavailable');
+
+    const command = vi.fn()
+      .mockResolvedValueOnce([{ provider_id: 'homeassistant', provider_type: 'homeassistant', requires_redirect: true }])
+      .mockResolvedValueOnce({});
+    await expect(beginMusicAssistantHomeAssistantOAuth({ command })).rejects.toThrow('did not return');
+  });
+
+  it('extracts the MA callback token and returns a URL without OAuth parameters', () => {
+    expect(parseMusicAssistantOAuthCallback('http://ha.example/lovelace?code=session-token&state=oauth-state&view=music')).toEqual({
+      token: 'session-token',
+      cleanUrl: 'http://ha.example/lovelace?view=music',
+    });
+    expect(parseMusicAssistantOAuthCallback('http://ha.example/lovelace?error=access_denied&error_description=Nope')).toEqual({
+      error: 'access_denied',
+      cleanUrl: 'http://ha.example/lovelace',
+    });
+  });
+
+  it('sends native MA HTTP commands with an in-memory bearer token', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ value: [{ provider_id: 'homeassistant' }] }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const transport = createMusicAssistantHttpTransport('http://ma.example:8095/', 'session-token');
+
+    await expect(transport.command('auth/providers')).resolves.toEqual([{ provider_id: 'homeassistant' }]);
+    expect(fetchMock).toHaveBeenCalledWith('http://ma.example:8095/api', expect.objectContaining({
+      method: 'POST',
+      headers: expect.objectContaining({ Authorization: 'Bearer session-token' }),
+    }));
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ command: 'auth/providers', args: {} });
+    vi.unstubAllGlobals();
+  });
+
+  it('resolves MA players from explicit HA attributes or an unambiguous friendly name', () => {
+    const players = [
+      { player_id: 'ma-1', name: 'Living Room' },
+      { player_id: 'ma-2', name: 'Kitchen' },
+    ];
+    expect(resolveMusicAssistantPlayer(players, 'media_player.living_room', {
+      entity_id: 'media_player.living_room', state: 'paused', attributes: { music_assistant_player_id: 'ma-2' },
+    })?.player_id).toBe('ma-2');
+    expect(resolveMusicAssistantPlayer(players, 'media_player.living_room', {
+      entity_id: 'media_player.living_room', state: 'paused', attributes: { friendly_name: 'Living Room' },
+    })?.player_id).toBe('ma-1');
+    expect(resolveMusicAssistantPlayer([{ player_id: 'ma-1', name: 'Living Room' }, { player_id: 'ma-2', name: 'Living Room' }], 'media_player.living_room', {
+      entity_id: 'media_player.living_room', state: 'paused', attributes: { friendly_name: 'Living Room' },
+    })).toBeUndefined();
+  });
+
+  it('builds the verified native browse and search commands', async () => {
+    const command = vi.fn().mockResolvedValue([]);
+    const transport: MusicAssistantTransport = { command };
+
+    await browseMusicAssistant(transport);
+    await browseMusicAssistant(transport, 'provider://demo');
+    await searchMusicAssistantApi(transport, 'song', { mediaTypes: ['track', 'album'], limit: 12, libraryOnly: false });
+
+    expect(command).toHaveBeenNthCalledWith(1, 'music/browse', {});
+    expect(command).toHaveBeenNthCalledWith(2, 'music/browse', { path: 'provider://demo' });
+    expect(command).toHaveBeenNthCalledWith(3, 'music/search', {
+      search_query: 'song',
+      media_types: ['track', 'album'],
+      limit: 12,
+      library_only: false,
+    });
+  });
+
+  it('builds verified queue, speaker, favorite, and playlist commands', async () => {
+    const command = vi.fn().mockResolvedValue({});
+    const transport: MusicAssistantTransport = { command };
+
+    await getMusicAssistantPlayers(transport);
+    await getActiveMusicAssistantQueue(transport, 'player-1');
+    await playMusicAssistantMedia(transport, 'queue-1', 'library://track/1', 'add');
+    await setMusicAssistantShuffle(transport, 'queue-1', true);
+    await transferMusicAssistantQueue(transport, 'queue-1', 'queue-2', true);
+    await addMusicAssistantPlayerToGroup(transport, 'player-1', 'player-2');
+    await addCurrentMusicAssistantItemToFavorites(transport, 'player-1');
+    await removeMusicAssistantFavorite(transport, 'track', 'library-track-1');
+    await listMusicAssistantPlaylists(transport, { search: 'mix', limit: 10, offset: 20 });
+    await createMusicAssistantPlaylist(transport, 'New mix', 'builtin');
+    await addMusicAssistantPlaylistTracks(transport, 'playlist-1', ['library://track/1']);
+
+    expect(command.mock.calls).toEqual([
+      ['players/all', {}],
+      ['player_queues/get_active_queue', { player_id: 'player-1' }],
+      ['player_queues/play_media', { queue_id: 'queue-1', media: 'library://track/1', option: 'add' }],
+      ['player_queues/shuffle', { queue_id: 'queue-1', shuffle_enabled: true }],
+      ['player_queues/transfer', { source_queue_id: 'queue-1', target_queue_id: 'queue-2', auto_play: true }],
+      ['players/cmd/group', { player_id: 'player-1', target_player: 'player-2' }],
+      ['players/add_currently_playing_to_favorites', { player_id: 'player-1' }],
+      ['music/favorites/remove_item', { media_type: 'track', library_item_id: 'library-track-1' }],
+      ['music/playlists/library_items', { search: 'mix', limit: 10, offset: 20 }],
+      ['music/playlists/create_playlist', { name: 'New mix', provider_instance_or_domain: 'builtin' }],
+      ['music/playlists/add_playlist_tracks', { db_playlist_id: 'playlist-1', uris: ['library://track/1'] }],
+    ]);
+  });
+
   it('sends authenticated media browser commands', async () => {
     const response = { title: 'Sources', children: [] };
     const callWS = vi.fn().mockResolvedValue(response);

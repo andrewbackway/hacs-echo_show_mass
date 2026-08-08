@@ -15,6 +15,7 @@ export class MusicAssistantCardEditor extends HTMLElement {
   private config: MusicAssistantCardConfig = {
     type: 'custom:music-assistant-card',
     player: '',
+    music_assistant_url: 'http://10.1.0.123:8095',
     config_entry_id: '',
     layout: 'two-column',
     show_search: true,
@@ -49,8 +50,8 @@ export class MusicAssistantCardEditor extends HTMLElement {
           <p class="hint">Choose a Music Assistant player or synchronized group from Home Assistant.</p>
         </div>
         <div class="field">
-          <ha-textfield id="entry" label="Music Assistant config entry ID" placeholder="01JEXNDHT21V0BHJXM7A5SZANV" required></ha-textfield>
-          <p class="hint">Used for authenticated Music Assistant search requests.</p>
+          <ha-textfield id="server" label="Music Assistant server URL" placeholder="http://music-assistant:8095" required></ha-textfield>
+          <p class="hint">The card uses Home Assistant OAuth to authenticate with this Music Assistant server.</p>
         </div>
         <div class="field">
           <ha-select id="action" label="When a song is selected">
@@ -71,9 +72,9 @@ export class MusicAssistantCardEditor extends HTMLElement {
     player.label = 'Player entity';
     this.listenValue(player, 'player');
 
-    const entry = this.getControl('entry');
-    entry.value = this.config.config_entry_id;
-    this.listenValue(entry, 'config_entry_id');
+    const server = this.getControl('server');
+    server.value = this.config.music_assistant_url ?? '';
+    this.listenValue(server, 'music_assistant_url');
 
     const action = this.getControl('action');
     action.value = this.config.click_action ?? 'play';
