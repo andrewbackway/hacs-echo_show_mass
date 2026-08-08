@@ -198,9 +198,9 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
     if (this.queueState.loading) return '<div class="queue"><h2 class="panel-title">Queue</h2><p class="state">Loading queue...</p></div>';
     if (this.queueState.error) return `<div class="queue"><h2 class="panel-title">Queue</h2><p class="state error">${escapeHtml(this.queueState.error)}</p></div>`;
     const items = this.queueState.details?.items ?? [];
-    if (items.length === 0) return '<div class="queue"><div class="panel-header"><h2 class="panel-title">Queue</h2><button class="queue-action" data-control="clear-queue" type="button">Clear</button></div><p class="state">Queue is empty.</p></div>';
+    if (items.length === 0) return '<div class="queue"><div class="panel-header"><h2 class="panel-title">Queue</h2><button class="queue-action" data-control="clear-queue" type="button" aria-label="Clear queue" title="Clear queue">×</button></div><p class="state">Queue is empty.</p></div>';
     const currentIndex = this.queueState.details?.current_index ?? -1;
-    return `<div class="queue"><div class="panel-header"><h2 class="panel-title">Queue</h2><button class="queue-action" data-control="clear-queue" type="button">Clear</button></div><div class="queue-list">${items.map((item, index) => this.renderQueueItem(item, index, index === currentIndex)).join('')}</div></div>`;
+    return `<div class="queue"><div class="panel-header"><h2 class="panel-title">Queue</h2><button class="queue-action" data-control="clear-queue" type="button" aria-label="Clear queue" title="Clear queue">×</button></div><div class="queue-list">${items.map((item, index) => this.renderQueueItem(item, index, index === currentIndex)).join('')}</div></div>`;
   }
 
   private renderQueueItem(item: QueueItem, index: number, current: boolean): string {

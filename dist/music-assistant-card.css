@@ -1,0 +1,2 @@
+:root{--lightningcss-light: ;--lightningcss-dark:initial;color-scheme:dark;background:#0b0f10;font-family:Segoe UI,sans-serif}*{box-sizing:border-box}body{color:#f2f6f5;background:#0b0f10;min-width:320px;min-height:100vh;margin:0}#app{background:#101416;width:min(960px,100%);min-height:480px;margin:0 auto;padding:16px}@media (width<=680px){#app{padding:10px}}
+/*$vite$:1*/
