@@ -52,13 +52,14 @@ describe('MusicAssistantCard', () => {
   it('preserves the browse DOM during steady-state Home Assistant updates', async () => {
     const card = new MusicAssistantCard();
     card.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room', config_entry_id: 'entry-id', show_queue: false });
-    card.hass = createHass();
+    const hass = createHass();
+    card.hass = hass;
     document.body.append(card);
     card.shadowRoot?.querySelector<HTMLElement>('[data-control="discover"]')?.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     const input = card.shadowRoot?.querySelector('[data-search]');
-    card.hass = createHass();
+    card.hass = { ...hass, states: { ...hass.states } };
 
     expect(card.shadowRoot?.querySelector('[data-search]')).toBe(input);
     window.history.replaceState({}, '', '/');

@@ -151,6 +151,7 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
   private needsReconnectLoad = false;
   private operationError?: string;
   private eventsBound = false;
+  private sessionIdentity?: { callWS?: HomeAssistant['callWS']; callService: HomeAssistant['callService'] };
   private musicAssistantIngress?: string;
   private ingressLoading = false;
   private musicAssistantPlayerId?: string;
@@ -209,7 +210,9 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
   }
 
   set hass(hass: HomeAssistant) {
-    const sessionChanged = this._hass !== hass;
+    const sessionChanged = this.sessionIdentity !== undefined
+      && (this.sessionIdentity.callWS !== hass.callWS || this.sessionIdentity.callService !== hass.callService);
+    this.sessionIdentity = { callWS: hass.callWS, callService: hass.callService };
     this._hass = hass;
     if (sessionChanged) this.musicAssistantIngress = undefined;
     if (!this.musicAssistantIngress) {
