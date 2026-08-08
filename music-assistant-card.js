@@ -35,9 +35,9 @@
   .top-menu .menu-label { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .primary-view { position: absolute; z-index: 1; inset: 14px; min-height: 0; overflow: hidden; }
   .now-playing-screen { padding-top: var(--music-header-height); }
-  .now-playing-screen .playback { display: grid; grid-template-rows: minmax(0, 1fr) auto auto; height: 100%; box-sizing: border-box; gap: 12px; margin: 0; padding: 18px 10px 8px; border: 0; background: transparent; }
-  .now-playing-layout { display: grid; grid-template-rows: minmax(0, 1fr) auto; align-content: center; gap: 12px; min-height: 0; }
-  .now-playing-art { width: min(256px, 42vh); height: min(256px, 42vh); justify-self: center; display: grid; place-items: center; overflow: hidden; border-radius: 8px; background: var(--music-raised); color: var(--music-muted); }
+  .now-playing-screen .playback { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto auto; height: 100%; box-sizing: border-box; gap: 12px; margin: 0; padding: 18px 10px 8px; border: 0; background: transparent; }
+  .now-playing-layout { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 0; }
+  .now-playing-art { width: min(180px, 30vh, 60vw); aspect-ratio: 1; flex: 0 1 auto; display: grid; place-items: center; overflow: hidden; border-radius: 8px; background: var(--music-raised); color: var(--music-muted); }
   .now-playing-art img { width: 100%; height: 100%; object-fit: cover; }
   .now-playing-art ha-icon { --mdc-icon-size: 42px; }
   .now-playing-details { display: grid; gap: 6px; min-width: 0; width: 100%; text-align: center; }
