@@ -4,18 +4,17 @@ import type {
   LovelaceCardConfig,
   MusicAssistantCardConfig,
 } from './home-assistant';
-import { beginMusicAssistantHomeAssistantOAuth, parseMusicAssistantOAuthCallback } from './music-assistant/auth';
 import { addCurrentMusicAssistantItemToFavorites, addMusicAssistantPlayerToGroup, addMusicAssistantPlaylistTracks, advanceMusicAssistantQueue, browseMusicAssistant, clearMusicAssistantQueue, createMusicAssistantPlaylist, getActiveMusicAssistantQueue, getMusicAssistantPlayers, getMusicAssistantQueueItems, listMusicAssistantPlaylists, playMusicAssistantMedia, removeMusicAssistantFavorite, seekMusicAssistantQueue, setMusicAssistantRepeat, setMusicAssistantShuffle, setMusicAssistantVolume, searchMusicAssistantApi, toggleMusicAssistantQueuePlayback, transferMusicAssistantQueue, type MusicAssistantMediaItem, type MusicAssistantPlayer, type MusicAssistantPlaylist } from './music-assistant/api';
 import { type MediaBrowseResponse, type MediaItem } from './music-assistant/media-browser';
 import { flattenSearchResults, type SearchGroup, type SearchItem, type SearchResponse } from './music-assistant/search';
 import { type QueueDetails, type QueueItem } from './music-assistant/queue';
+import { resolveMusicAssistantIngress } from './music-assistant/ingress';
 import { createMusicAssistantHttpTransport } from './music-assistant/transport';
 import { resolveMusicAssistantPlayer } from './music-assistant/players';
 import './editor';
 
 const CARD_TAG = 'music-assistant-card';
 const ROOT_MEDIA_ID = 'media-source://';
-const DEFAULT_MUSIC_ASSISTANT_URL = 'http://10.1.0.123:8095';
 
 const cardStyles = `
   :host { --music-bg: var(--card-background-color, #101416); --music-surface: #171d20; --music-raised: #20282b; --music-line: #2d383b; --music-text: var(--primary-text-color, #f2f6f5); --music-muted: var(--secondary-text-color, #9ba9aa); --music-accent: var(--primary-color, #65d6c7); display: block; color: var(--music-text); font-family: var(--paper-font-body1_-_font-family, 'Segoe UI', sans-serif); }
@@ -128,7 +127,6 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
     return {
       type: 'custom:music-assistant-card',
       player: 'media_player.living_room',
-      music_assistant_url: DEFAULT_MUSIC_ASSISTANT_URL,
       config_entry_id: '',
       layout: 'two-column',
       show_search: true,
@@ -153,9 +151,8 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
   private needsReconnectLoad = false;
   private operationError?: string;
   private eventsBound = false;
-  private musicAssistantToken?: string;
-  private oauthCallbackHandled = false;
-  private oauthLoading = false;
+  private musicAssistantIngress?: string;
+  private ingressLoading = false;
   private musicAssistantPlayerId?: string;
   private musicAssistantCurrentMedia?: MusicAssistantPlayer['current_media'];
   private speakerState: SpeakerState = { loading: false };
@@ -171,23 +168,21 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
   setConfig(config: LovelaceCardConfig): void {
     if (!config || typeof config !== 'object') throw new Error('Music Assistant Card: configuration is required.');
     if (typeof config.player !== 'string' || !config.player.trim()) throw new Error('Music Assistant Card: a player entity is required.');
-    const musicAssistantUrl = typeof config.music_assistant_url === 'string' && config.music_assistant_url.trim() ? config.music_assistant_url.trim() : DEFAULT_MUSIC_ASSISTANT_URL;
-    try { new URL(musicAssistantUrl); } catch { throw new Error('Music Assistant Card: music_assistant_url must be a valid URL.'); }
     if (config.config_entry_id !== undefined && (typeof config.config_entry_id !== 'string' || !config.config_entry_id.trim())) throw new Error('Music Assistant Card: config_entry_id must be a non-empty string when provided.');
     if (config.click_action && !['play', 'queue'].includes(String(config.click_action))) throw new Error('Music Assistant Card: click_action must be "play" or "queue".');
 
     const previousConfig = this.config;
-    const { type: _type, ...providedConfig } = config;
-    this.config = { type: CARD_TAG, layout: 'two-column', show_search: true, show_queue: true, click_action: 'play', ...providedConfig, player: config.player.trim(), music_assistant_url: musicAssistantUrl, config_entry_id: typeof config.config_entry_id === 'string' ? config.config_entry_id.trim() : '' };
-    if (previousConfig && (previousConfig.player !== this.config.player || previousConfig.music_assistant_url !== this.config.music_assistant_url)) {
+    const providedConfig = Object.fromEntries(Object.entries(config).filter(([key]) => key !== 'type' && !key.startsWith('music_assistant_')));
+    this.config = { type: CARD_TAG, layout: 'two-column', show_search: true, show_queue: true, click_action: 'play', ...providedConfig, player: config.player.trim(), config_entry_id: typeof config.config_entry_id === 'string' ? config.config_entry_id.trim() : '' };
+    if (previousConfig && previousConfig.player !== this.config.player) {
       this.mediaRequested = false;
       this.queueRequested = false;
       this.browseState = { loading: false, path: [] };
       this.queueState = { loading: false };
       this.searchState = { query: '', loading: false };
       this.invalidateRequests();
-      this.musicAssistantToken = undefined;
-      this.oauthCallbackHandled = false;
+      this.musicAssistantIngress = undefined;
+      this.ingressLoading = false;
       this.musicAssistantPlayerId = undefined;
       this.musicAssistantCurrentMedia = undefined;
       this.speakerState = { loading: false };
@@ -202,6 +197,7 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
     this.mediaRequested = false;
     this.queueRequested = false;
     this.lifecycleId += 1;
+    this.musicAssistantIngress = undefined;
     this.clearSearchTimer();
     this.invalidateRequests();
   }
@@ -213,9 +209,11 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
   }
 
   set hass(hass: HomeAssistant) {
+    const sessionChanged = this._hass !== hass;
     this._hass = hass;
-    this.captureOAuthCallback();
-    if (!this.musicAssistantToken) {
+    if (sessionChanged) this.musicAssistantIngress = undefined;
+    if (!this.musicAssistantIngress) {
+      void this.discoverIngress();
       this.render();
       return;
     }
@@ -242,7 +240,7 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
   }
 
   private async loadMedia(mediaContentId: string, path: MediaItem[]): Promise<void> {
-    if (!this._hass || !this.config || !this.musicAssistantToken) return;
+    if (!this._hass || !this.config || !this.musicAssistantIngress) return;
     const requestId = ++this.mediaRequestId;
     const lifecycleId = this.lifecycleId;
     this.browseState = { loading: true, path };
@@ -265,7 +263,7 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
   }
 
   private async loadQueue(): Promise<void> {
-    if (!this._hass || !this.config || !this.musicAssistantToken) return;
+    if (!this._hass || !this.config || !this.musicAssistantIngress) return;
     const requestId = ++this.queueRequestId;
     const lifecycleId = this.lifecycleId;
     this.queueState = { loading: true };
@@ -303,8 +301,8 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
 
   private render(): void {
     if (!this.config) return;
-    if (!this.musicAssistantToken) {
-      this.root.innerHTML = `<style>${cardStyles}</style><section class="card" aria-label="Music Assistant"><div class="state"><p>${this.oauthLoading ? 'Opening Home Assistant sign-in...' : 'Connect Music Assistant with Home Assistant OAuth to continue.'}</p>${this.operationError ? `<p class="state error" role="alert">${escapeHtml(this.operationError)}</p>` : ''}<button class="control primary" data-control="authenticate" type="button" ${this.oauthLoading ? 'disabled' : ''}>${this.oauthLoading ? 'Connecting...' : 'Connect Music Assistant'}</button></div></section>`;
+    if (!this.musicAssistantIngress) {
+      this.root.innerHTML = `<style>${cardStyles}</style><section class="card" aria-label="Music Assistant"><div class="state"><p>${this.ingressLoading ? 'Connecting to Music Assistant through Home Assistant...' : 'Music Assistant ingress is unavailable.'}</p>${this.operationError ? `<p class="state error" role="alert">${escapeHtml(this.operationError)}</p>` : ''}</div></section>`;
       return;
     }
     const currentTitle = this.browseState.response?.title ?? 'Media sources';
@@ -419,7 +417,7 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
   }
 
   private async runSearch(query: string): Promise<void> {
-    if (!this._hass || !this.musicAssistantToken || !query.trim()) {
+    if (!this._hass || !this.musicAssistantIngress || !query.trim()) {
       this.searchState = { query: query.trim(), loading: false };
       this.render();
       return;
@@ -590,13 +588,9 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
   }
 
   private async handleControl(control: string): Promise<void> {
-    if (control === 'authenticate') {
-      await this.beginAuthentication();
-      return;
-    }
     if (control === 'discover') {
       this.discoveryOpen = !this.discoveryOpen;
-      if (this.discoveryOpen && !this.mediaRequested) {
+      if (this.discoveryOpen && this.musicAssistantIngress && !this.mediaRequested) {
         this.mediaRequested = true;
         void this.loadMedia(ROOT_MEDIA_ID, []);
       }
@@ -651,40 +645,31 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
     }
   }
 
-  private captureOAuthCallback(): void {
-    if (this.oauthCallbackHandled || typeof window === 'undefined' || !window.location.search) return;
-    this.oauthCallbackHandled = true;
-    try {
-      const callback = parseMusicAssistantOAuthCallback(window.location.href);
-      if (callback.error) this.operationError = `Music Assistant sign-in failed: ${callback.error}`;
-      if (callback.token) this.musicAssistantToken = callback.token;
-      if (callback.cleanUrl !== window.location.href) window.history.replaceState({}, document.title, callback.cleanUrl);
-    } catch {
-      this.operationError = 'Music Assistant returned an invalid sign-in response.';
-    }
-  }
-
-  private async beginAuthentication(): Promise<void> {
-    if (!this.config) return;
-    this.oauthLoading = true;
+  private async discoverIngress(): Promise<void> {
+    if (!this._hass || this.musicAssistantIngress || this.ingressLoading) return;
+    this.ingressLoading = true;
     this.operationError = undefined;
     this.render();
     try {
-      const transport = createMusicAssistantHttpTransport(this.config.music_assistant_url ?? DEFAULT_MUSIC_ASSISTANT_URL);
-      const returnUrl = typeof window === 'undefined' ? undefined : `${window.location.origin}${window.location.pathname}`;
-      const authorization = await beginMusicAssistantHomeAssistantOAuth(transport, returnUrl);
-      if (typeof window === 'undefined') throw new Error('Browser navigation is unavailable.');
-      window.location.assign(authorization.authorizationUrl);
+      this.musicAssistantIngress = await resolveMusicAssistantIngress(this._hass);
+      if (this.discoveryOpen && !this.mediaRequested) {
+        this.mediaRequested = true;
+        void this.loadMedia(ROOT_MEDIA_ID, []);
+      }
+      if (this.config?.show_queue && !this.queueRequested) {
+        this.queueRequested = true;
+        void this.loadQueue();
+      }
     } catch (error) {
-      this.oauthLoading = false;
-      this.operationError = error instanceof Error ? error.message : 'Unable to start Home Assistant sign-in.';
-      this.render();
+      this.operationError = error instanceof Error ? error.message : 'Unable to discover Music Assistant ingress.';
     }
+    this.ingressLoading = false;
+    this.render();
   }
 
   private getMusicAssistantTransport() {
-    if (!this.config?.music_assistant_url || !this.musicAssistantToken) throw new Error('Music Assistant is not authenticated.');
-    return createMusicAssistantHttpTransport(this.config.music_assistant_url, this.musicAssistantToken);
+    if (!this.musicAssistantIngress) throw new Error('Music Assistant ingress is unavailable.');
+    return createMusicAssistantHttpTransport(this.musicAssistantIngress);
   }
 
   private async getNativeControlContext(): Promise<{ playerId: string; queueId: string }> {
@@ -696,7 +681,7 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
   }
 
   private async playMedia(mediaContentId: string, mediaContentType: string, option = this.config?.click_action === 'queue' ? 'add' : 'replace'): Promise<void> {
-    if (!this._hass || !this.config || !this.musicAssistantToken) return;
+    if (!this._hass || !this.config || !this.musicAssistantIngress) return;
     if (!this.queueState.details?.queue_id) await this.loadQueue();
     const queueId = this.queueState.details?.queue_id;
     if (!queueId) throw new Error('Music Assistant queue is unavailable for this player.');

@@ -1,20 +1,19 @@
-import type { MusicAssistantAuthTransport } from './auth';
 import type { MusicAssistantTransport } from './api';
 
-export type MusicAssistantCommandTransport = MusicAssistantTransport & MusicAssistantAuthTransport;
+export type MusicAssistantCommandTransport = MusicAssistantTransport;
 
 let messageSequence = 0;
 
-export function createMusicAssistantHttpTransport(baseUrl: string, token?: string): MusicAssistantCommandTransport {
-  const apiUrl = `${baseUrl.replace(/\/$/, '')}/api`;
+export function createMusicAssistantHttpTransport(ingressPath: string): MusicAssistantCommandTransport {
+  const apiUrl = `${ingressPath.replace(/\/$/, '')}/api`;
 
   return {
     async command<T>(command: string, args: Record<string, unknown> = {}): Promise<T> {
       const response = await fetch(apiUrl, {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
           message_id: `music-assistant-card-${Date.now()}-${messageSequence++}`,

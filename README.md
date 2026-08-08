@@ -4,7 +4,7 @@ A custom Lovelace card for Home Assistant that lets you browse Music Assistant m
 
 ## Current status
 
-The card provides Home Assistant OAuth authentication, native Music Assistant provider browsing, expandable containers, artwork fallbacks, loading and error states, debounced global search with grouped results, explicit play or queue actions, current-track metadata, playback controls, speaker transfer/grouping, progress and volume sliders, queue viewing, favorites, editable playlist actions, and playlist shuffle. Queue removal and reordering are not currently exposed because the native Music Assistant API does not provide those operations in the verified contract.
+The card connects through the installed Music Assistant add-on's Home Assistant ingress, then provides native provider browsing, expandable containers, artwork fallbacks, loading and error states, debounced global search with grouped results, explicit play or queue actions, current-track metadata, playback controls, speaker transfer/grouping, progress and volume sliders, queue viewing, favorites, editable playlist actions, and playlist shuffle. Queue removal and reordering are not currently exposed because the native Music Assistant API does not provide those operations in the verified contract.
 
 ## Build
 
@@ -62,14 +62,13 @@ Add a manual card to a dashboard:
 ```yaml
 type: custom:music-assistant-card
 player: media_player.living_room
-music_assistant_url: http://10.1.0.123:8095
 layout: two-column
 show_search: true
 show_queue: true
 click_action: play
 ```
 
-The `player` value must be the Music Assistant `media_player` entity or a supported synchronized group. The card authenticates to Music Assistant through Home Assistant OAuth; it does not ask for or store a Music Assistant password or token in YAML. The visual editor allows an incomplete new-card configuration while it is being filled in.
+The `player` value must be the Music Assistant `media_player` entity or a supported synchronized group. The card automatically discovers the installed add-on through Home Assistant and keeps its generated ingress route in runtime memory only. No server URL, ingress token, or Music Assistant credential is required in YAML. The visual editor allows an incomplete new-card configuration while it is being filled in.
 
 ## Known limitations
 
@@ -82,11 +81,10 @@ Install the repository through HACS as a dashboard frontend resource, then add t
 ```yaml
 type: custom:music-assistant-card
 player: media_player.living_room
-music_assistant_url: http://10.1.0.123:8095
 layout: two-column
 show_search: true
 show_queue: true
 click_action: play
 ```
 
-The `player` value is required and may refer to a Music Assistant player or a supported synchronized group exposed by Home Assistant. `music_assistant_url` defaults to the configured Music Assistant server when omitted. The card uses Home Assistant OAuth and keeps the resulting session token in runtime memory only.
+The `player` value is required and may refer to a Music Assistant player or a supported synchronized group exposed by Home Assistant. Music Assistant must be installed as a Home Assistant add-on with ingress enabled. Discovery and all API calls use the authenticated dashboard session.

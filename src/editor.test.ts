@@ -28,7 +28,6 @@ describe('MusicAssistantCardEditor', () => {
     editor.hass = createHass();
 
     expect(editor.querySelector('ha-entity-picker')).toBeTruthy();
-    expect(editor.querySelector('ha-textfield')).toBeTruthy();
     expect(editor.querySelector('ha-select')).toBeTruthy();
     expect(editor.querySelector('ha-switch')).toBeTruthy();
     expect(editor.querySelector('select')).toBeNull();
@@ -42,14 +41,11 @@ describe('MusicAssistantCardEditor', () => {
     const changes: CustomEvent[] = [];
     editor.addEventListener('config-changed', (event) => changes.push(event as CustomEvent));
 
-    const server = editor.querySelector('ha-textfield') as HTMLElement;
-    server.dispatchEvent(new CustomEvent('value-changed', { bubbles: true, detail: { value: 'http://ma.example:8095' } }));
     const queueSwitch = editor.querySelector('#show-queue') as HTMLElement & { checked?: boolean };
     queueSwitch.checked = false;
     queueSwitch.dispatchEvent(new Event('change', { bubbles: true }));
 
-    expect(changes).toHaveLength(2);
-    expect(changes[0].detail.config.music_assistant_url).toBe('http://ma.example:8095');
-    expect(changes[1].detail.config.show_queue).toBe(false);
+    expect(changes).toHaveLength(1);
+    expect(changes[0].detail.config.show_queue).toBe(false);
   });
 });

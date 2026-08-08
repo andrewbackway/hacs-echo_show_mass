@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { HomeAssistant } from '../home-assistant';
-import { beginMusicAssistantHomeAssistantOAuth, parseMusicAssistantOAuthCallback } from './auth';
 import {
   addCurrentMusicAssistantItemToFavorites,
   addMusicAssistantPlayerToGroup,
@@ -32,56 +31,16 @@ function createHass(callService = vi.fn(), callWS?: HomeAssistant['callWS']): Ho
 }
 
 describe('Music Assistant adapters', () => {
-  it('discovers and starts the Home Assistant OAuth flow without handling tokens', async () => {
-    const command = vi.fn()
-      .mockResolvedValueOnce([
-        { provider_id: 'builtin', provider_type: 'builtin', requires_redirect: false },
-        { provider_id: 'homeassistant', provider_type: 'homeassistant', requires_redirect: true },
-      ])
-      .mockResolvedValueOnce({ authorization_url: 'https://ma.example/auth/authorize?state=test' });
-
-    await expect(beginMusicAssistantHomeAssistantOAuth({ command }, 'http://ha.example/oauth-return')).resolves.toEqual({
-      providerId: 'homeassistant',
-      authorizationUrl: 'https://ma.example/auth/authorize?state=test',
-    });
-    expect(command).toHaveBeenNthCalledWith(1, 'auth/providers', {});
-    expect(command).toHaveBeenNthCalledWith(2, 'auth/authorization_url', {
-      provider_id: 'homeassistant',
-      return_url: 'http://ha.example/oauth-return',
-    });
-  });
-
-  it('rejects an unavailable Home Assistant OAuth provider or missing URL', async () => {
-    await expect(beginMusicAssistantHomeAssistantOAuth({
-      command: vi.fn().mockResolvedValue([]),
-    })).rejects.toThrow('OAuth provider is unavailable');
-
-    const command = vi.fn()
-      .mockResolvedValueOnce([{ provider_id: 'homeassistant', provider_type: 'homeassistant', requires_redirect: true }])
-      .mockResolvedValueOnce({});
-    await expect(beginMusicAssistantHomeAssistantOAuth({ command })).rejects.toThrow('did not return');
-  });
-
-  it('extracts the MA callback token and returns a URL without OAuth parameters', () => {
-    expect(parseMusicAssistantOAuthCallback('http://ha.example/lovelace?code=session-token&state=oauth-state&view=music')).toEqual({
-      token: 'session-token',
-      cleanUrl: 'http://ha.example/lovelace?view=music',
-    });
-    expect(parseMusicAssistantOAuthCallback('http://ha.example/lovelace?error=access_denied&error_description=Nope')).toEqual({
-      error: 'access_denied',
-      cleanUrl: 'http://ha.example/lovelace',
-    });
-  });
-
-  it('sends native MA HTTP commands with an in-memory bearer token', async () => {
+  it('sends native MA HTTP commands through same-origin ingress without a bearer token', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ value: [{ provider_id: 'homeassistant' }] }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
-    const transport = createMusicAssistantHttpTransport('http://ma.example:8095/', 'session-token');
+    const transport = createMusicAssistantHttpTransport('/api/hassio_ingress/music-assistant/');
 
     await expect(transport.command('auth/providers')).resolves.toEqual([{ provider_id: 'homeassistant' }]);
-    expect(fetchMock).toHaveBeenCalledWith('http://ma.example:8095/api', expect.objectContaining({
+    expect(fetchMock).toHaveBeenCalledWith('/api/hassio_ingress/music-assistant/api', expect.objectContaining({
       method: 'POST',
-      headers: expect.objectContaining({ Authorization: 'Bearer session-token' }),
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
     }));
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ command: 'auth/providers', args: {} });
     vi.unstubAllGlobals();
