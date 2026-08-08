@@ -33,7 +33,27 @@ npm run check
 npm run build
 ```
 
-Commit the source and generated `music-assistant-card.js` output, push the branch to GitHub, and create a GitHub release with a semantic version tag such as `v0.1.0`. HACS installs the tagged repository version and uses the root-level dashboard JavaScript. When the card changes, publish a new tag and release rather than asking users to download files manually.
+Publish releases with the GitHub CLI. Make sure the CLI is installed and authenticated first:
+
+```powershell
+gh auth login
+gh auth status
+```
+
+Then update the version in `package.json`, run the checks above, and publish the commit and release. Replace `0.1.4` with the next semantic version:
+
+```powershell
+$version = "0.1.4"
+
+git add package.json src music-assistant-card.js dist/music-assistant-card.js
+git commit -m "Release Music Assistant card v$version"
+git push origin main
+git tag -a "v$version" -m "Release Music Assistant card v$version"
+git push origin "v$version"
+gh release create "v$version" --title "v$version" --generate-notes
+```
+
+On Bash, use `version=0.1.4` and `${version}` instead of the PowerShell `$version` syntax. HACS installs the tagged repository version and uses the root-level dashboard JavaScript. When the card changes, publish a new tag and release rather than asking users to download files manually.
 
 ### Install through HACS
 
