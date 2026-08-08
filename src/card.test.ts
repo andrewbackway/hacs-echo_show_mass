@@ -92,6 +92,87 @@ describe('MusicAssistantCard', () => {
     expect(card.shadowRoot?.querySelector('[data-volume-value]')?.textContent).toBe('80%');
   });
 
+  it('does not show the start-playback prompt for playing or paused media', async () => {
+    const card = new MusicAssistantCard();
+    card.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room', show_queue: false });
+    const hass = createHass();
+    card.hass = {
+      ...hass,
+      states: {
+        ...hass.states,
+        'media_player.living_room': {
+          ...hass.states['media_player.living_room'],
+          state: 'playing',
+          attributes: { media_title: 'Song without metadata' },
+        },
+      },
+    };
+    document.body.append(card);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(card.shadowRoot?.querySelector('.now-playing-subtitle')?.textContent).toBe('Unknown artist');
+    expect(card.shadowRoot?.textContent).not.toContain('Choose a song to start playback');
+
+    card.hass = {
+      ...hass,
+      states: {
+        ...hass.states,
+        'media_player.living_room': {
+          ...hass.states['media_player.living_room'],
+          state: 'paused',
+          attributes: { media_title: 'Song without metadata' },
+        },
+      },
+    };
+    expect(card.shadowRoot?.querySelector('.now-playing-subtitle')?.textContent).toBe('Unknown artist');
+    expect(card.shadowRoot?.textContent).not.toContain('Choose a song to start playback');
+  });
+
+  it('disables favorite when Music Assistant has no current item', async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      const values: Record<string, unknown> = {
+        'players/all': [{ player_id: 'media_player.living_room', name: 'Living Room', current_media: null }],
+        'player_queues/get_active_queue': { queue_id: 'queue-1', current_index: -1 },
+        'player_queues/items': [],
+      };
+      return new Response(JSON.stringify({ value: values[body.command] }), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const card = new MusicAssistantCard();
+    card.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room' });
+    card.hass = createHass();
+    document.body.append(card);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(card.shadowRoot?.querySelector<HTMLButtonElement>('[data-control="favorite"]')?.disabled).toBe(true);
+    vi.unstubAllGlobals();
+  });
+
+  it('keeps favorite enabled when Music Assistant has a current item', async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      const values: Record<string, unknown> = {
+        'players/all': [{ player_id: 'media_player.living_room', name: 'Living Room', current_media: { uri: 'library://track/1', is_favorite: false } }],
+        'player_queues/get_active_queue': { queue_id: 'queue-1', current_index: 0 },
+        'player_queues/items': [],
+      };
+      return new Response(JSON.stringify({ value: values[body.command] }), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const card = new MusicAssistantCard();
+    card.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room' });
+    card.hass = createHass();
+    document.body.append(card);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(card.shadowRoot?.querySelector<HTMLButtonElement>('[data-control="favorite"]')?.disabled).toBe(false);
+    vi.unstubAllGlobals();
+  });
+
   it('selects queue items by index and confirms queue clearing', async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body));
