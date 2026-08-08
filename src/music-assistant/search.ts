@@ -5,7 +5,11 @@ export type SearchGroup = 'artists' | 'albums' | 'tracks' | 'playlists' | 'radio
 export interface SearchItem {
   name: string;
   uri: string;
+  path?: string;
   media_type?: string;
+  is_playable?: boolean;
+  can_expand?: boolean;
+  children?: SearchItem[];
   artist?: string;
   album?: string;
   image?: string;

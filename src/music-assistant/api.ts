@@ -127,6 +127,10 @@ export function playMusicAssistantMedia(
   return transport.command<null>('player_queues/play_media', { queue_id: queueId, media, option });
 }
 
+export function playMusicAssistantQueueItem(transport: MusicAssistantTransport, queueId: string, index: number): Promise<null> {
+  return transport.command<null>('player_queues/play_index', { queue_id: queueId, index });
+}
+
 export function setMusicAssistantShuffle(transport: MusicAssistantTransport, queueId: string, enabled: boolean): Promise<null> {
   return transport.command<null>('player_queues/shuffle', { queue_id: queueId, shuffle_enabled: enabled });
 }
@@ -204,4 +208,12 @@ export function addMusicAssistantPlaylistTracks(transport: MusicAssistantTranspo
 
 export function addMusicAssistantPlayerToGroup(transport: MusicAssistantTransport, playerId: string, targetPlayer: string): Promise<null> {
   return transport.command<null>('players/cmd/group', { player_id: playerId, target_player: targetPlayer });
+}
+
+export function removeMusicAssistantPlayerFromGroup(transport: MusicAssistantTransport, playerId: string): Promise<null> {
+  return transport.command<null>('players/cmd/ungroup', { player_id: playerId });
+}
+
+export function removeMusicAssistantPlayersFromGroup(transport: MusicAssistantTransport, playerIds: string[]): Promise<null> {
+  return transport.command<null>('players/cmd/ungroup_many', { player_ids: playerIds });
 }

@@ -10,6 +10,9 @@ import {
   getMusicAssistantPlayers,
   listMusicAssistantPlaylists,
   playMusicAssistantMedia,
+  playMusicAssistantQueueItem,
+  removeMusicAssistantPlayerFromGroup,
+  removeMusicAssistantPlayersFromGroup,
   removeMusicAssistantFavorite,
   searchMusicAssistantApi,
   setMusicAssistantShuffle,
@@ -20,7 +23,7 @@ import { browseMedia } from './media-browser';
 import { getQueue } from './queue';
 import { flattenSearchResults, searchMusicAssistant } from './search';
 import { createMusicAssistantHttpTransport } from './transport';
-import { resolveMusicAssistantPlayer } from './players';
+import { getEligibleMusicAssistantPlayers, resolveMusicAssistantPlayer, sortMusicAssistantPlayers } from './players';
 
 function createHass(callService = vi.fn(), callWS?: HomeAssistant['callWS']): HomeAssistant {
   return {
@@ -75,6 +78,18 @@ describe('Music Assistant adapters', () => {
     })).toBeUndefined();
   });
 
+  it('filters unavailable speakers and puts the active group first', () => {
+    const players = [
+      { player_id: 'hidden', name: 'Hidden', hide_in_ui: true },
+      { player_id: 'offline', name: 'Offline', available: false },
+      { player_id: 'kitchen', name: 'Kitchen', synced_to: 'living' },
+      { player_id: 'office', name: 'Office' },
+      { player_id: 'living', name: 'Living', group_members: ['living', 'kitchen'] },
+    ];
+    const eligible = getEligibleMusicAssistantPlayers(players);
+    expect(sortMusicAssistantPlayers(eligible, 'living').map((player) => player.player_id)).toEqual(['kitchen', 'living', 'office']);
+  });
+
   it('builds the verified native browse and search commands', async () => {
     const command = vi.fn().mockResolvedValue([]);
     const transport: MusicAssistantTransport = { command };
@@ -100,9 +115,12 @@ describe('Music Assistant adapters', () => {
     await getMusicAssistantPlayers(transport);
     await getActiveMusicAssistantQueue(transport, 'player-1');
     await playMusicAssistantMedia(transport, 'queue-1', 'library://track/1', 'add');
+    await playMusicAssistantQueueItem(transport, 'queue-1', 3);
     await setMusicAssistantShuffle(transport, 'queue-1', true);
     await transferMusicAssistantQueue(transport, 'queue-1', 'queue-2', true);
     await addMusicAssistantPlayerToGroup(transport, 'player-1', 'player-2');
+    await removeMusicAssistantPlayerFromGroup(transport, 'player-2');
+    await removeMusicAssistantPlayersFromGroup(transport, ['player-2', 'player-3']);
     await addCurrentMusicAssistantItemToFavorites(transport, 'player-1');
     await removeMusicAssistantFavorite(transport, 'track', 'library-track-1');
     await listMusicAssistantPlaylists(transport, { search: 'mix', limit: 10, offset: 20 });
@@ -113,9 +131,12 @@ describe('Music Assistant adapters', () => {
       ['players/all', {}],
       ['player_queues/get_active_queue', { player_id: 'player-1' }],
       ['player_queues/play_media', { queue_id: 'queue-1', media: 'library://track/1', option: 'add' }],
+      ['player_queues/play_index', { queue_id: 'queue-1', index: 3 }],
       ['player_queues/shuffle', { queue_id: 'queue-1', shuffle_enabled: true }],
       ['player_queues/transfer', { source_queue_id: 'queue-1', target_queue_id: 'queue-2', auto_play: true }],
       ['players/cmd/group', { player_id: 'player-1', target_player: 'player-2' }],
+      ['players/cmd/ungroup', { player_id: 'player-2' }],
+      ['players/cmd/ungroup_many', { player_ids: ['player-2', 'player-3'] }],
       ['players/add_currently_playing_to_favorites', { player_id: 'player-1' }],
       ['music/favorites/remove_item', { media_type: 'track', library_item_id: 'library-track-1' }],
       ['music/playlists/library_items', { search: 'mix', limit: 10, offset: 20 }],
