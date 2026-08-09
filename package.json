@@ -1,7 +1,7 @@
 {
   "name": "music-assistant-card",
   "private": true,
-  "version": "0.1.4",
+  "version": "0.4.0",
   "type": "module",
   "scripts": {
     "build": "tsc && eslint . && vite build && node scripts/copy-card.mjs && node scripts/verify-artifact.mjs",
