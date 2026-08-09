@@ -57,8 +57,17 @@ export async function playQueueItem(context: ActionContext, queueItemId: string)
 }
 
 export async function runSpeakerAction(context: ActionContext, action: string, targetPlayerId: string): Promise<void> {
-  if (action === 'transfer')
-    await callService(context, 'media_player', 'transfer_playback', {}, { entity_id: targetPlayerId });
+  if (action === 'transfer') {
+    const sourcePlayer = context.getConfig()?.player;
+    if (!sourcePlayer) throw new Error('The current Music Assistant speaker is unavailable.');
+    await callService(
+      context,
+      'music_assistant',
+      'transfer_queue',
+      { source_player: sourcePlayer, auto_play: true },
+      { entity_id: targetPlayerId },
+    );
+  }
   await context.loadQueue();
   await context.loadSpeakers();
 }

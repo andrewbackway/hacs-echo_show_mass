@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { HomeAssistant } from '../home-assistant';
 import { createInitialState, type CardState } from './card-store';
-import { applySpeakerSelection, type ActionContext } from './actions';
+import { applySpeakerSelection, runSpeakerAction, type ActionContext } from './actions';
 
 function createContext(selectedPlayerIds: string[]): { context: ActionContext; callService: HomeAssistant['callService'] } {
   const callService = vi.fn().mockResolvedValue({});
@@ -36,6 +36,23 @@ describe('applySpeakerSelection', () => {
       'join',
       { group_members: ['media_player.kitchen'] },
       { entity_id: 'media_player.living_room' },
+      true,
+      false,
+    );
+  });
+});
+
+describe('runSpeakerAction', () => {
+  it('transfers the current queue to the selected player through Music Assistant', async () => {
+    const { context, callService } = createContext(['media_player.living_room']);
+
+    await runSpeakerAction(context, 'transfer', 'media_player.kitchen');
+
+    expect(callService).toHaveBeenCalledWith(
+      'music_assistant',
+      'transfer_queue',
+      { source_player: 'media_player.living_room', auto_play: true },
+      { entity_id: 'media_player.kitchen' },
       true,
       false,
     );

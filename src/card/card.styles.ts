@@ -69,6 +69,9 @@ export const cardStyles = `
   .queue-row, .speaker-row, .playlist-list > .control { min-height: var(--music-list-row-height); }
   .speaker-actions { display: flex; align-items: left; justify-content: space-between; gap: 10px; min-height: var(--music-touch-target); margin-bottom: 8px; }
   .speaker-select { flex: 1; justify-content: flex-start; min-height: var(--music-touch-target); border: 0; background: transparent; text-align: left; }
+  .speaker-select .media-copy { flex: 1; text-align: left; }
+  .speaker-icon { display: grid; flex: 0 0 32px; place-items: center; color: var(--music-muted); }
+  .speaker-icon ha-icon { --mdc-icon-size: 24px; }
   .speaker-row .row-action { border: 0; background: transparent; }
   .speaker-actions { position: sticky; bottom: 0; z-index: 1; padding-top: 8px; background: var(--music-surface); }
   h1, h2, p { margin: 0; }

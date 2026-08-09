@@ -8,6 +8,11 @@ function playerName(player: HassEntity): string {
   return typeof name === 'string' && name.trim() ? name.trim() : player.entity_id;
 }
 
+function playerIcon(player: HassEntity): string {
+  const icon = player.attributes.icon;
+  return typeof icon === 'string' && icon.trim() ? icon.trim() : 'mdi:speaker';
+}
+
 function supportsGrouping(player: HassEntity): boolean {
   const features = player.attributes.supported_features;
   return typeof features === 'number'
@@ -46,7 +51,8 @@ export function renderSpeakerSheet(
             type="button"
             aria-pressed="${selected}"
           >
-            <span class="media-copy"
+            <span class="speaker-icon" aria-hidden="true"><ha-icon icon="${playerIcon(player)}"></ha-icon></span
+            ><span class="media-copy"
               ><span class="media-title">${playerName(player)}</span
               ><span class="media-meta"
                 >${player.entity_id === currentId ? 'Current player' : selected ? 'Selected' : 'Available'}</span
