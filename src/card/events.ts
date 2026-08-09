@@ -47,20 +47,20 @@ export function createClickHandler(context: ActionContext): (event: Event) => vo
         const item = context.getState().browseState.response?.children[Number(row.dataset.itemIndex)];
         if (item && !item.can_expand)
           void runAction(context, async () => {
-            await playMedia(context, item.media_content_id, item.media_content_type, option);
             if (option === 'replace') {
               const uiState = context.getState().uiState;
               context.setState({ uiState: { ...uiState, primaryView: 'now-playing' } });
             }
+            await playMedia(context, item.media_content_id, item.media_content_type, option);
           });
       } else if (row?.dataset.searchUri) {
         const searchUri = row.dataset.searchUri;
         void runAction(context, async () => {
-          await playMedia(context, searchUri, row.dataset.searchType ?? 'music', option);
           if (option === 'replace') {
             const uiState = context.getState().uiState;
             context.setState({ uiState: { ...uiState, primaryView: 'now-playing' } });
           }
+          await playMedia(context, searchUri, row.dataset.searchType ?? 'music', option);
         });
       }
       return;

@@ -62,7 +62,13 @@ describe('MusicAssistantCard', () => {
   });
 
   it('returns to now playing after playing a browsed item', async () => {
-    const callService = vi.fn().mockResolvedValue({});
+    let resolveService: (() => void) | undefined;
+    const callService = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveService = resolve;
+        }),
+    );
     const callWS = vi.fn().mockResolvedValue({
       title: 'Music Assistant',
       children: [
@@ -82,9 +88,10 @@ describe('MusicAssistantCard', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     card.shadowRoot?.querySelector<HTMLElement>('[data-item-action="play"]')?.click();
+    expect(card.shadowRoot?.querySelector('[data-primary-view="now-playing"]')).toBeTruthy();
+    resolveService?.();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(card.shadowRoot?.querySelector('[data-primary-view="now-playing"]')).toBeTruthy();
     expect(callService).toHaveBeenCalledWith(
       'music_assistant',
       'play_media',
