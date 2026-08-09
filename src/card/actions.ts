@@ -71,7 +71,7 @@ export async function applySpeakerSelection(context: ActionContext): Promise<voi
   const additions = [...selected].filter((playerId) => playerId !== currentId && !existing.has(playerId));
   const removals = [...existing].filter((playerId) => playerId !== currentId && !selected.has(playerId));
   if (additions.length > 0)
-    await callService(context, 'media_player', 'join', {}, { entity_id: [currentId, ...additions] });
+    await callService(context, 'media_player', 'join', { group_members: additions }, { entity_id: currentId });
   if (removals.length > 0) await callService(context, 'media_player', 'unjoin', {}, { entity_id: removals });
   await context.loadQueue();
   await context.loadSpeakers();

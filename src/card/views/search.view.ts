@@ -4,6 +4,7 @@ import { flattenSearchResults, type SearchItem } from '../../music-assistant/sea
 import type { SearchState } from '../card.types';
 import type { LibraryCategory, LibraryState } from '../card.types';
 import type { LibraryItem } from '../../music-assistant/library';
+import { formatMediaValue } from '../dom';
 import { renderRowActions } from './media-list.view';
 
 export function renderSearchInput(query: string): TemplateResult {
@@ -71,7 +72,7 @@ function renderLibraryItem(item: LibraryItem, category: LibraryCategory): Templa
   const canExpand = item.can_expand === true || ['artist', 'album', 'playlist', 'podcast'].includes(category);
   const canPlay = item.is_playable !== false && category !== 'artist';
   const mediaType = item.media_type ?? (category === 'favorites' ? 'track' : category);
-  const metadata = [item.artist, item.album, item.provider].filter(Boolean).join(' · ') || category;
+  const metadata = [item.artist, item.album, item.provider].map(formatMediaValue).filter(Boolean).join(' · ') || category;
   const thumbnail = item.image
     ? html`<img src="${item.image}" alt="" loading="lazy" />`
     : html`<ha-icon icon="mdi:music-note"></ha-icon>`;
@@ -113,7 +114,7 @@ export function renderSearchResults(searchState: SearchState): TemplateResult {
 }
 
 export function renderSearchItem(item: SearchItem & { group: string }): TemplateResult {
-  const metadata = [item.artist, item.album, item.provider].filter(Boolean).join(' · ') || item.group;
+  const metadata = [item.artist, item.album, item.provider].map(formatMediaValue).filter(Boolean).join(' · ') || item.group;
   const thumbnail = item.image
     ? html`<img src="${item.image}" alt="" loading="lazy" />`
     : html`<ha-icon icon="mdi:music-note"></ha-icon>`;

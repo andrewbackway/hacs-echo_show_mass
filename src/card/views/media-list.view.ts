@@ -2,6 +2,7 @@ import { html, nothing, type TemplateResult } from 'lit-html';
 import { repeat } from 'lit-html/directives/repeat.js';
 import type { MediaItem } from '../../music-assistant/media-browser';
 import type { BrowseState } from '../card.types';
+import { formatMediaValue } from '../dom';
 
 export function renderRowActions(): TemplateResult {
   return html`<span class="row-actions"
@@ -38,7 +39,10 @@ export function renderMediaItem(item: MediaItem, index: number): TemplateResult 
     ? html`<ha-icon icon="mdi:folder-music"></ha-icon>`
     : html`<ha-icon icon="mdi:music-note"></ha-icon>`;
   const thumbnail = item.thumbnail ? html`<img src="${item.thumbnail}" alt="" loading="lazy" />` : icon;
-  const metadata = [item.artist, item.album, item.media_class ?? item.media_content_type].filter(Boolean).join(' · ');
+  const metadata = [item.artist, item.album, item.media_class ?? item.media_content_type]
+    .map(formatMediaValue)
+    .filter(Boolean)
+    .join(' · ');
   return html`<div
     class="media-row"
     data-item-index="${index}"

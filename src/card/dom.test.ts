@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { formatDuration, getGroupMembers, toMediaItemFromSearch } from './dom';
+import { formatDuration, formatMediaValue, getGroupMembers, toMediaItemFromSearch } from './dom';
+
+describe('formatMediaValue', () => {
+  it('extracts display text from structured media metadata', () => {
+    expect(formatMediaValue({ name: 'Artist' })).toBe('Artist');
+    expect(formatMediaValue({ title: 'Album' })).toBe('Album');
+  });
+
+  it('returns an empty string for unsupported metadata', () => {
+    expect(formatMediaValue({ uri: 'artist://1' })).toBe('');
+    expect(formatMediaValue(undefined)).toBe('');
+  });
+});
 
 describe('formatDuration', () => {
   it('formats seconds as m:ss', () => {
