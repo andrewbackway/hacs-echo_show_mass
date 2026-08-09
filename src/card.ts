@@ -281,8 +281,11 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
     try {
       const details = await getQueue(this._hass, this.config.player);
       if (!request.isCurrent() || this.getMediaContentId(this._hass.states[this.config.player]) !== mediaContentId) return;
-      this.queueCache = { mediaContentId, details };
-      this.store.setState({ queueState: { loading: false, details } });
+      const currentIndex = details.items?.findIndex((item) => item.uri === mediaContentId);
+      const normalizedDetails =
+        currentIndex !== undefined && currentIndex >= 0 ? { ...details, current_index: currentIndex } : details;
+      this.queueCache = { mediaContentId, details: normalizedDetails };
+      this.store.setState({ queueState: { loading: false, details: normalizedDetails } });
     } catch (error) {
       if (!request.isCurrent() || this.getMediaContentId(this._hass.states[this.config.player]) !== mediaContentId) return;
       this.store.setState({

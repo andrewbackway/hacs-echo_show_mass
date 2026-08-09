@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { HomeAssistant } from '../home-assistant';
 import { browseMedia } from './media-browser';
-import { getQueue } from './queue';
+import { getCoreQueue, getQueue } from './queue';
 import { searchMusicAssistant } from './search';
 import { getLibrary } from './library';
 
@@ -45,7 +45,7 @@ describe('Home Assistant Music Assistant adapters', () => {
     const callService = vi
       .fn()
       .mockResolvedValue({ response: { 'media_player.living_room': { items: [{ name: 'Song' }] } } });
-    await expect(getQueue(createHass(callService), 'media_player.living_room')).resolves.toEqual({
+    await expect(getCoreQueue(createHass(callService), 'media_player.living_room')).resolves.toEqual({
       items: [{ name: 'Song' }],
     });
     expect(callService).toHaveBeenCalledWith(
@@ -58,9 +58,64 @@ describe('Home Assistant Music Assistant adapters', () => {
     );
   });
 
+  it('loads and maps the complete queue from mass_queue', async () => {
+    const callService = vi.fn().mockResolvedValue({
+      response: {
+        'media_player.living_room': [
+          {
+            queue_item_id: 'queue-1',
+            media_title: 'Song',
+            media_album_name: 'Album',
+            media_artist: 'Artist',
+            media_content_id: 'track://1',
+            media_image: '/local/song.jpg',
+          },
+        ],
+      },
+    });
+    await expect(getQueue(createHass(callService), 'media_player.living_room')).resolves.toEqual({
+      items: [
+        {
+          queue_item_id: 'queue-1',
+          name: 'Song',
+          album: 'Album',
+          artist: 'Artist',
+          uri: 'track://1',
+          image_url: '/local/song.jpg',
+        },
+      ],
+    });
+    expect(callService).toHaveBeenCalledWith(
+      'mass_queue',
+      'get_queue_items',
+      { entity: 'media_player.living_room', offset: 0, limit: 1000 },
+      undefined,
+      true,
+      true,
+    );
+  });
+
+  it('normalizes the documented current and next queue items', async () => {
+    const callService = vi.fn().mockResolvedValue({
+      response: {
+        'media_player.living_room': {
+          current_item: { name: 'Current song', uri: 'track://current' },
+          next_item: { name: 'Queued album', uri: 'album://queued' },
+        },
+      },
+    });
+    await expect(getCoreQueue(createHass(callService), 'media_player.living_room')).resolves.toMatchObject({
+      items: [
+        { name: 'Current song', uri: 'track://current' },
+        { name: 'Queued album', uri: 'album://queued' },
+      ],
+      current_index: 0,
+    });
+  });
+
   it('rejects an empty queue action response', async () => {
     const callService = vi.fn().mockResolvedValue({});
-    await expect(getQueue(createHass(callService), 'media_player.living_room')).rejects.toThrow('queue response');
+    await expect(getCoreQueue(createHass(callService), 'media_player.living_room')).rejects.toThrow('queue response');
   });
 
   it('requests a sorted paged library category with the Music Assistant config entry', async () => {

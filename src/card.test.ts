@@ -74,7 +74,7 @@ describe('MusicAssistantCard', () => {
   it('loads Favorites across every documented library media type', async () => {
     const calls: Array<Record<string, unknown>> = [];
     const callService = vi.fn().mockImplementation((_domain, service, data) => {
-      if (service === 'get_queue') return Promise.resolve({ response: { items: [] } });
+      if (service === 'get_queue_items') return Promise.resolve({ response: { 'media_player.living_room': [] } });
       calls.push(data);
       return Promise.resolve({ response: { items: [{ name: String(data.media_type), uri: `${data.media_type}://1` }] } });
     });
@@ -96,7 +96,7 @@ describe('MusicAssistantCard', () => {
 
   it('loads the selected category when its rail button is clicked', async () => {
     const callService = vi.fn().mockImplementation((_domain, service, _data) => {
-      if (service === 'get_queue') return Promise.resolve({ response: { items: [] } });
+      if (service === 'get_queue_items') return Promise.resolve({ response: { 'media_player.living_room': [] } });
       return Promise.resolve({ response: { items: [{ name: 'Artist', uri: 'artist://1' }] } });
     });
     const card = new MusicAssistantCard();
@@ -251,11 +251,11 @@ describe('MusicAssistantCard', () => {
 
   it('refreshes the cached queue when the primary player media ID changes', async () => {
     const queueResponses = [
-      { response: { 'media_player.living_room': { items: [{ name: 'First song' }] } } },
-      { response: { 'media_player.living_room': { items: [{ name: 'Second song' }] } } },
+      { response: { 'media_player.living_room': [{ media_title: 'First song', media_content_id: 'track://first' }] } },
+      { response: { 'media_player.living_room': [{ media_title: 'Second song', media_content_id: 'track://second' }] } },
     ];
     const callService = vi.fn().mockImplementation((_domain, service) =>
-      service === 'get_queue' ? Promise.resolve(queueResponses.shift()) : Promise.resolve({}),
+      service === 'get_queue_items' ? Promise.resolve(queueResponses.shift()) : Promise.resolve({}),
     );
     const card = new MusicAssistantCard();
     const firstHass = createHass(callService);
@@ -277,7 +277,7 @@ describe('MusicAssistantCard', () => {
 
   it('shows a queue refresh error in the queue flyout', async () => {
     const callService = vi.fn().mockImplementation((_domain, service) =>
-      service === 'get_queue' ? Promise.reject(new Error('Queue unavailable')) : Promise.resolve({}),
+      service === 'get_queue_items' ? Promise.reject(new Error('Queue unavailable')) : Promise.resolve({}),
     );
     const card = new MusicAssistantCard();
     card.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room' });
