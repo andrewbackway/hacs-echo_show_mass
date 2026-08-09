@@ -16,19 +16,44 @@ describe('Home Assistant Music Assistant adapters', () => {
   });
 
   it('preserves artwork from media-source responses', async () => {
-    const response = { title: 'Albums', children: [{ media_content_id: 'album://1', media_content_type: 'album', title: 'Album', thumbnail: '/local/album.jpg' }] };
+    const response = {
+      title: 'Albums',
+      children: [
+        { media_content_id: 'album://1', media_content_type: 'album', title: 'Album', thumbnail: '/local/album.jpg' },
+      ],
+    };
     await expect(browseMedia(createHass(undefined, vi.fn().mockResolvedValue(response)))).resolves.toEqual(response);
   });
 
   it('sends the HA search action without a config entry', async () => {
     const callService = vi.fn().mockResolvedValue({ response: { tracks: [{ name: 'Song', uri: 'track://1' }] } });
-    await expect(searchMusicAssistant(createHass(callService), 'song')).resolves.toEqual({ tracks: [{ name: 'Song', uri: 'track://1' }] });
-    expect(callService).toHaveBeenCalledWith('music_assistant', 'search', { name: 'song', limit: 12 }, undefined, true, true);
+    await expect(searchMusicAssistant(createHass(callService), 'song')).resolves.toEqual({
+      tracks: [{ name: 'Song', uri: 'track://1' }],
+    });
+    expect(callService).toHaveBeenCalledWith(
+      'music_assistant',
+      'search',
+      { name: 'song', limit: 12 },
+      undefined,
+      true,
+      true,
+    );
   });
 
   it('normalizes an entity-keyed queue action response', async () => {
-    const callService = vi.fn().mockResolvedValue({ response: { 'media_player.living_room': { items: [{ name: 'Song' }] } } });
-    await expect(getQueue(createHass(callService), 'media_player.living_room')).resolves.toEqual({ items: [{ name: 'Song' }] });
-    expect(callService).toHaveBeenCalledWith('music_assistant', 'get_queue', undefined, { entity_id: 'media_player.living_room' }, false, true);
+    const callService = vi
+      .fn()
+      .mockResolvedValue({ response: { 'media_player.living_room': { items: [{ name: 'Song' }] } } });
+    await expect(getQueue(createHass(callService), 'media_player.living_room')).resolves.toEqual({
+      items: [{ name: 'Song' }],
+    });
+    expect(callService).toHaveBeenCalledWith(
+      'music_assistant',
+      'get_queue',
+      undefined,
+      { entity_id: 'media_player.living_room' },
+      false,
+      true,
+    );
   });
 });

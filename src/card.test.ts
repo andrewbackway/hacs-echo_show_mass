@@ -2,12 +2,21 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { HomeAssistant } from './home-assistant';
 import { MusicAssistantCard } from './card';
+import { playMedia } from './card/actions';
 
 function createHass(callService = vi.fn()): HomeAssistant {
   return {
     states: {
-      'media_player.living_room': { entity_id: 'media_player.living_room', state: 'paused', attributes: { friendly_name: 'Living Room' } },
-      'media_player.kitchen': { entity_id: 'media_player.kitchen', state: 'idle', attributes: { friendly_name: 'Kitchen', supported_features: 512 } },
+      'media_player.living_room': {
+        entity_id: 'media_player.living_room',
+        state: 'paused',
+        attributes: { friendly_name: 'Living Room' },
+      },
+      'media_player.kitchen': {
+        entity_id: 'media_player.kitchen',
+        state: 'idle',
+        attributes: { friendly_name: 'Kitchen', supported_features: 512 },
+      },
     },
     callService,
     callWS: vi.fn().mockResolvedValue({ title: 'Music Assistant', children: [] }),
@@ -17,13 +26,28 @@ function createHass(callService = vi.fn()): HomeAssistant {
 describe('MusicAssistantCard', () => {
   it('uses HA-only defaults and no ingress settings', () => {
     expect(MusicAssistantCard.getStubConfig()).toEqual({
-      type: 'custom:music-assistant-card', player: '', layout: 'two-column',
-      show_search: true, show_queue: true, click_action: 'play',
+      type: 'custom:music-assistant-card',
+      player: '',
+      layout: 'two-column',
+      show_search: true,
+      show_queue: true,
+      click_action: 'play',
     });
   });
 
   it('browses through the Music Assistant media source', async () => {
-    const callWS = vi.fn().mockResolvedValue({ title: 'Music Assistant', children: [{ media_content_id: 'album://1', media_content_type: 'album', title: 'Album', thumbnail: '/local/album.jpg', can_play: true }] });
+    const callWS = vi.fn().mockResolvedValue({
+      title: 'Music Assistant',
+      children: [
+        {
+          media_content_id: 'album://1',
+          media_content_type: 'album',
+          title: 'Album',
+          thumbnail: '/local/album.jpg',
+          can_play: true,
+        },
+      ],
+    });
     const card = new MusicAssistantCard();
     card.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room', show_queue: false });
     card.hass = { ...createHass(), callWS };
@@ -51,9 +75,16 @@ describe('MusicAssistantCard', () => {
     const card = new MusicAssistantCard();
     card.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room', show_queue: false });
     card.hass = createHass(callService);
-    card['playMedia']('track://1', 'track');
+    void playMedia(card['actionContext'], 'track://1', 'track');
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(callService).toHaveBeenCalledWith('music_assistant', 'play_media', { media_id: 'track://1', media_type: 'track', enqueue: 'replace' }, { entity_id: 'media_player.living_room' }, true, false);
+    expect(callService).toHaveBeenCalledWith(
+      'music_assistant',
+      'play_media',
+      { media_id: 'track://1', media_type: 'track', enqueue: 'replace' },
+      { entity_id: 'media_player.living_room' },
+      true,
+      false,
+    );
   });
 
   it('updates the now-playing progress slider while playing', () => {
@@ -92,11 +123,56 @@ describe('MusicAssistantCard', () => {
 
   it('restricts visible players to the permitted list and primary player', async () => {
     const card = new MusicAssistantCard();
-    card.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room', players: ['media_player.kitchen'] });
+    card.setConfig({
+      type: 'custom:music-assistant-card',
+      player: 'media_player.living_room',
+      players: ['media_player.kitchen'],
+    });
     card.hass = createHass();
     card.shadowRoot?.querySelector<HTMLElement>('[data-control="speaker"]')?.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(card.shadowRoot?.textContent).toContain('Living Room');
     expect(card.shadowRoot?.textContent).toContain('Kitchen');
+  });
+
+  it('does not recreate the playback element or artwork on unrelated hass updates', () => {
+    const card = new MusicAssistantCard();
+    card.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room', show_queue: false });
+    const baseHass = createHass();
+    baseHass.states['media_player.living_room'] = {
+      entity_id: 'media_player.living_room',
+      state: 'playing',
+      attributes: {
+        friendly_name: 'Living Room',
+        media_title: 'Song',
+        media_artist: 'Artist',
+        entity_picture: '/local/art.jpg',
+        media_position: 5,
+        media_duration: 200,
+      },
+    };
+    card.hass = baseHass;
+    const img = card.shadowRoot?.querySelector('.now-playing-art img');
+    expect(img).toBeTruthy();
+
+    // Simulate Home Assistant pushing a fresh hass object on an unrelated entity change,
+    // with the configured player's own attributes unchanged apart from a routine position tick.
+    const nextHass = createHass();
+    nextHass.states['media_player.kitchen'] = { ...nextHass.states['media_player.kitchen'], state: 'playing' };
+    nextHass.states['media_player.living_room'] = {
+      entity_id: 'media_player.living_room',
+      state: 'playing',
+      attributes: {
+        friendly_name: 'Living Room',
+        media_title: 'Song',
+        media_artist: 'Artist',
+        entity_picture: '/local/art.jpg',
+        media_position: 6,
+        media_duration: 200,
+      },
+    };
+    card.hass = nextHass;
+
+    expect(card.shadowRoot?.querySelector('.now-playing-art img')).toBe(img);
   });
 });

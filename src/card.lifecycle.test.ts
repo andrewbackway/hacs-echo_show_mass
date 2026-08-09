@@ -4,7 +4,11 @@ import type { HomeAssistant } from './home-assistant';
 import { MusicAssistantCard } from './card';
 
 function hass(callWS: HomeAssistant['callWS']): HomeAssistant {
-  return { states: { 'media_player.living_room': { entity_id: 'media_player.living_room', state: 'paused', attributes: {} } }, callService: vi.fn(), callWS };
+  return {
+    states: { 'media_player.living_room': { entity_id: 'media_player.living_room', state: 'paused', attributes: {} } },
+    callService: vi.fn(),
+    callWS,
+  };
 }
 
 describe('MusicAssistantCard lifecycle', () => {
@@ -17,7 +21,10 @@ describe('MusicAssistantCard lifecycle', () => {
     card.shadowRoot?.querySelector<HTMLElement>('[data-control="discover"]')?.click();
     card.shadowRoot?.querySelector<HTMLElement>('[data-path-root]')?.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
-    calls[0]({ title: 'First', children: [{ media_content_id: 'album://first', media_content_type: 'album', title: 'First album' }] });
+    calls[0]({
+      title: 'First',
+      children: [{ media_content_id: 'album://first', media_content_type: 'album', title: 'First album' }],
+    });
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(card.shadowRoot?.textContent).toContain('First album');
   });

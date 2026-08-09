@@ -18,14 +18,18 @@ export interface SearchItem {
 
 export type SearchResponse = Partial<Record<SearchGroup, SearchItem[]>>;
 
-export async function searchMusicAssistant(
-  hass: HomeAssistant,
-  query: string,
-): Promise<SearchResponse> {
-  const result = await hass.callService<unknown>('music_assistant', 'search', {
-    name: query,
-    limit: 12,
-  }, undefined, true, true);
+export async function searchMusicAssistant(hass: HomeAssistant, query: string): Promise<SearchResponse> {
+  const result = await hass.callService<unknown>(
+    'music_assistant',
+    'search',
+    {
+      name: query,
+      limit: 12,
+    },
+    undefined,
+    true,
+    true,
+  );
   if (!result.response || typeof result.response !== 'object') return {};
   const response = result.response as Record<string, unknown>;
   const normalized: SearchResponse = {};

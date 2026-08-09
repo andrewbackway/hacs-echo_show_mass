@@ -24,7 +24,14 @@ export interface QueueDetails {
 }
 
 export async function getQueue(hass: HomeAssistant, player: string): Promise<QueueDetails> {
-  const result = await hass.callService<QueueDetails | Record<string, QueueDetails>>('music_assistant', 'get_queue', undefined, { entity_id: player }, false, true);
+  const result = await hass.callService<QueueDetails | Record<string, QueueDetails>>(
+    'music_assistant',
+    'get_queue',
+    undefined,
+    { entity_id: player },
+    false,
+    true,
+  );
   const response = result.response;
   if (!response) return {};
   if (isQueueDetails(response)) return response;

@@ -101,8 +101,7 @@ export class MusicAssistantCardEditor extends HTMLElement {
 
   private listenValue(control: HassControl, name: keyof MusicAssistantCardConfig): void {
     const updateValue = (event: Event): void => {
-      const detailValue = (event as CustomEvent<{ value?: string | string[] }>).detail?.value;
-      const value = detailValue ?? (event.currentTarget as HassControl).value;
+      const value = getEventValue<string | string[]>(event) ?? (event.currentTarget as HassControl).value;
       if (name === 'players') {
         this.updateConfig(name, Array.isArray(value) ? value : value ? [value] : []);
       } else if (typeof value === 'string' || Array.isArray(value)) {
@@ -121,7 +120,7 @@ export class MusicAssistantCardEditor extends HTMLElement {
       this.updateConfig(name, value);
     };
     const updateValue = (event: Event): void => {
-      const detailValue = (event as CustomEvent<{ value?: string }>).detail?.value;
+      const detailValue = getEventValue<string>(event);
       applyValue(typeof detailValue === 'string' ? detailValue : (event.currentTarget as HassControl).value);
     };
     control.addEventListener('value-changed', updateValue);
@@ -137,8 +136,14 @@ export class MusicAssistantCardEditor extends HTMLElement {
 
   private updateConfig(name: keyof MusicAssistantCardConfig, value: string | string[] | boolean): void {
     this.config = { ...this.config, [name]: value } as MusicAssistantCardConfig;
-    this.dispatchEvent(new CustomEvent('config-changed', { bubbles: true, composed: true, detail: { config: this.config } }));
+    this.dispatchEvent(
+      new CustomEvent('config-changed', { bubbles: true, composed: true, detail: { config: this.config } }),
+    );
   }
 }
 
 if (!customElements.get(EDITOR_TAG)) customElements.define(EDITOR_TAG, MusicAssistantCardEditor);
+
+function getEventValue<T>(event: Event): T | undefined {
+  return (event as CustomEvent<{ value?: T }>).detail?.value;
+}

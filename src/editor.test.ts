@@ -35,7 +35,9 @@ describe('MusicAssistantCardEditor', () => {
     expect(editor.querySelector('#player-list')).toBeNull();
     expect(editor.querySelector('ha-switch')).toBeTruthy();
     expect(editor.querySelector('select')).toBeNull();
-    expect((editor.querySelector('#player') as HTMLElement & { includeDomains?: string[] }).includeDomains).toEqual(['media_player']);
+    expect((editor.querySelector('#player') as HTMLElement & { includeDomains?: string[] }).includeDomains).toEqual([
+      'media_player',
+    ]);
     expect((editor.querySelector('ha-entity-picker') as HTMLElement & { hass?: HomeAssistant }).hass).toBeTruthy();
   });
 
