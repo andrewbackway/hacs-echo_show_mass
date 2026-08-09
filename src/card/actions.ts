@@ -154,7 +154,7 @@ export async function handleControl(context: ActionContext, control: string): Pr
       'media_player',
       hass?.states[config?.player ?? '']?.state === 'playing' ? 'media_pause' : 'media_play',
     );
-  if (control === 'next') await callService(context, 'media_player', 'media_next');
+  if (control === 'next') await callService(context, 'media_player', 'media_next_track');
   if (control === 'shuffle') {
     const playerState = hass?.states[config?.player ?? ''];
     await callService(context, 'media_player', 'shuffle_set', { shuffle: !playerState?.attributes.shuffle });

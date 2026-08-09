@@ -58,6 +58,11 @@ describe('Home Assistant Music Assistant adapters', () => {
     );
   });
 
+  it('rejects an empty queue action response', async () => {
+    const callService = vi.fn().mockResolvedValue({});
+    await expect(getQueue(createHass(callService), 'media_player.living_room')).rejects.toThrow('queue response');
+  });
+
   it('requests a sorted paged library category with the Music Assistant config entry', async () => {
     const callService = vi.fn().mockResolvedValue({
       response: { items: [{ name: 'Album', uri: 'album://1' }], limit: 50, offset: 0, order_by: 'name', media_type: 'album' },

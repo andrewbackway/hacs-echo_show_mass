@@ -141,6 +141,25 @@ describe('MusicAssistantCard', () => {
     );
   });
 
+  it('uses media_player.media_next_track for the next button', async () => {
+    const callService = vi.fn().mockResolvedValue({});
+    const card = new MusicAssistantCard();
+    card.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room', show_queue: false });
+    card.hass = createHass(callService);
+
+    card.shadowRoot?.querySelector<HTMLElement>('[data-control="next"]')?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(callService).toHaveBeenCalledWith(
+      'media_player',
+      'media_next_track',
+      undefined,
+      { entity_id: 'media_player.living_room' },
+      true,
+      false,
+    );
+  });
+
   it('updates the now-playing progress slider while playing', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-09T12:00:00Z'));
@@ -228,5 +247,44 @@ describe('MusicAssistantCard', () => {
     card.hass = nextHass;
 
     expect(card.shadowRoot?.querySelector('.now-playing-art img')).toBe(img);
+  });
+
+  it('refreshes the cached queue when the primary player media ID changes', async () => {
+    const queueResponses = [
+      { response: { 'media_player.living_room': { items: [{ name: 'First song' }] } } },
+      { response: { 'media_player.living_room': { items: [{ name: 'Second song' }] } } },
+    ];
+    const callService = vi.fn().mockImplementation((_domain, service) =>
+      service === 'get_queue' ? Promise.resolve(queueResponses.shift()) : Promise.resolve({}),
+    );
+    const card = new MusicAssistantCard();
+    const firstHass = createHass(callService);
+    firstHass.states['media_player.living_room'].attributes.media_content_id = 'track://first';
+    card.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room' });
+    card.hass = firstHass;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const secondHass = createHass(callService);
+    secondHass.states['media_player.living_room'].attributes.media_content_id = 'track://second';
+    card.hass = secondHass;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(callService).toHaveBeenCalledTimes(2);
+    expect(card.shadowRoot?.textContent).not.toContain('Second song');
+    card.shadowRoot?.querySelector<HTMLElement>('[data-control="queue"]')?.click();
+    expect(card.shadowRoot?.textContent).toContain('Second song');
+  });
+
+  it('shows a queue refresh error in the queue flyout', async () => {
+    const callService = vi.fn().mockImplementation((_domain, service) =>
+      service === 'get_queue' ? Promise.reject(new Error('Queue unavailable')) : Promise.resolve({}),
+    );
+    const card = new MusicAssistantCard();
+    card.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room' });
+    card.hass = createHass(callService);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    card.shadowRoot?.querySelector<HTMLElement>('[data-control="queue"]')?.click();
+
+    expect(card.shadowRoot?.textContent).toContain('Queue unavailable');
   });
 });

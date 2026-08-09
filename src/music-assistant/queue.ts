@@ -33,13 +33,13 @@ export async function getQueue(hass: HomeAssistant, player: string): Promise<Que
     true,
   );
   const response = result.response;
-  if (!response) return {};
+  if (!response) throw new Error('The queue response was empty.');
   if (isQueueDetails(response)) return response;
   if (typeof response === 'object' && response !== null) {
     const keyed = (response as Record<string, unknown>)[player];
     return isQueueDetails(keyed) ? keyed : {};
   }
-  return {};
+  throw new Error('The queue response was invalid.');
 }
 
 function isQueueDetails(value: unknown): value is QueueDetails {

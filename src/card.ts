@@ -10,6 +10,7 @@ import { searchMusicAssistant } from './music-assistant/search';
 import { getLibrary, type LibraryMediaType } from './music-assistant/library';
 import { getQueue } from './music-assistant/queue';
 import { type MediaItem } from './music-assistant/media-browser';
+import type { QueueDetails } from './music-assistant/queue';
 import { html, nothing, render as renderTemplate } from 'lit-html';
 import { cardStyles } from './card/card.styles';
 import { getGroupMembers } from './card/dom';
@@ -49,6 +50,7 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
   private readonly container: HTMLElement;
   private readonly store = new CardStore(() => this.render());
   private queueRequested = false;
+  private queueCache?: { mediaContentId?: string; details: QueueDetails };
   private searchTimer?: ReturnType<typeof setTimeout>;
   private readonly mediaRequests = new RequestGuard();
   private readonly queueRequests = new RequestGuard();
@@ -127,6 +129,7 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
         previousConfig.music_assistant_config_entry_id !== this.config.music_assistant_config_entry_id)
     ) {
       this.queueRequested = false;
+      this.queueCache = undefined;
       this.mediaRequests.invalidate();
       this.queueRequests.invalidate();
       this.searchRequests.invalidate();
@@ -140,6 +143,7 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
   disconnectedCallback(): void {
     this.needsReconnectLoad = true;
     this.queueRequested = false;
+    this.queueCache = undefined;
     this.clearSearchTimer();
     this.clearProgressTimer();
     this.invalidateRequests();
@@ -157,12 +161,15 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
       (this.sessionIdentity.callWS !== hass.callWS || this.sessionIdentity.callService !== hass.callService);
     this.sessionIdentity = { callWS: hass.callWS, callService: hass.callService };
     const previousHass = this.lastHass;
+    const previousMediaContentId = this.getMediaContentId(previousHass?.states[this.config?.player ?? '']);
+    const nextMediaContentId = this.getMediaContentId(hass.states[this.config?.player ?? '']);
+    const mediaContentChanged = previousHass !== undefined && previousMediaContentId !== nextMediaContentId;
     this.lastHass = hass;
     this._hass = hass;
     if (sessionChanged) this.invalidateRequests();
     if (this.hasRelevantHassChange(previousHass, hass)) this.render();
     this.syncProgressTimer();
-    if (this.config?.show_queue && !this.queueRequested) {
+    if (this.config?.show_queue && (!this.queueRequested || mediaContentChanged)) {
       this.queueRequested = true;
       void this.loadQueue();
     }
@@ -176,6 +183,11 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
     ) {
       void this.loadLibrary();
     }
+  }
+
+  private getMediaContentId(player?: { attributes: Record<string, unknown> }): string | undefined {
+    const mediaContentId = player?.attributes.media_content_id;
+    return typeof mediaContentId === 'string' ? mediaContentId : undefined;
   }
 
   /**
@@ -263,15 +275,22 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
   private async loadQueue(): Promise<void> {
     if (!this._hass || !this.config) return;
     const request = this.queueRequests.begin();
-    this.store.setState({ queueState: { loading: true } });
+    const mediaContentId = this.getMediaContentId(this._hass.states[this.config.player]);
+    const currentQueue = this.store.getState().queueState;
+    this.store.setState({ queueState: { ...currentQueue, loading: true, error: undefined } });
     try {
       const details = await getQueue(this._hass, this.config.player);
-      if (!request.isCurrent()) return;
+      if (!request.isCurrent() || this.getMediaContentId(this._hass.states[this.config.player]) !== mediaContentId) return;
+      this.queueCache = { mediaContentId, details };
       this.store.setState({ queueState: { loading: false, details } });
     } catch (error) {
-      if (!request.isCurrent()) return;
+      if (!request.isCurrent() || this.getMediaContentId(this._hass.states[this.config.player]) !== mediaContentId) return;
       this.store.setState({
-        queueState: { loading: false, error: error instanceof Error ? error.message : 'Unable to load queue.' },
+        queueState: {
+          ...this.store.getState().queueState,
+          loading: false,
+          error: error instanceof Error ? error.message : 'Unable to load queue.',
+        },
       });
     }
   }
@@ -283,6 +302,7 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
       this.store.getState();
     const mediaItems = browseState.response?.children ?? [];
     const player = this._hass?.states[this.config.player];
+    const renderedQueueState = this.queueCache ? { ...queueState, details: this.queueCache.details } : queueState;
 
     const primary =
       uiState.primaryView === 'search'
@@ -309,7 +329,7 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
         ${renderActiveFlyout({
           activeFlyout: uiState.activeFlyout,
           clearQueueConfirmOpen: uiState.clearQueueConfirmOpen,
-          queueState,
+          queueState: renderedQueueState,
           speakerState,
           currentPlayerId: this.config.player,
           volumePercent: Number(this._hass?.states[this.config.player]?.attributes.volume_level ?? 0) * 100,
