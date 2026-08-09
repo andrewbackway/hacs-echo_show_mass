@@ -19,7 +19,7 @@ export interface MediaBrowseResponse extends MediaItem {
 
 export async function browseMedia(
   hass: HomeAssistant,
-  mediaContentId = 'media-source://',
+  mediaContentId = 'media-source://music_assistant',
 ): Promise<MediaBrowseResponse> {
   if (!hass.callWS) {
     throw new Error('Home Assistant media browsing is unavailable.');

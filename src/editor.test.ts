@@ -28,18 +28,18 @@ describe('MusicAssistantCardEditor', () => {
     editor.hass = createHass();
 
     expect(editor.querySelector('ha-entity-picker')).toBeTruthy();
-    expect(editor.querySelector('ha-input')).toBeTruthy();
+    expect(editor.querySelector('#players')).toBeTruthy();
     expect(editor.querySelector('ha-select')).toBeTruthy();
-    expect(editor.querySelectorAll('ha-list-item')).toHaveLength(2);
+    expect(editor.querySelectorAll('ha-list-item')).toHaveLength(4);
     expect(editor.querySelector('ha-switch')).toBeTruthy();
     expect(editor.querySelector('select')).toBeNull();
-    expect((editor.querySelector('ha-entity-picker') as HTMLElement & { includeDomains?: string[] }).includeDomains).toEqual(['media_player']);
+    expect((editor.querySelector('#player') as HTMLElement & { includeDomains?: string[] }).includeDomains).toEqual(['media_player']);
     expect((editor.querySelector('ha-entity-picker') as HTMLElement & { hass?: HomeAssistant }).hass).toBeTruthy();
   });
 
   it('emits normalized config changes from platform control events', () => {
     const editor = new MusicAssistantCardEditor();
-    editor.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room', config_entry_id: '' });
+    editor.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room' });
     const changes: CustomEvent[] = [];
     editor.addEventListener('config-changed', (event) => changes.push(event as CustomEvent));
 
@@ -49,7 +49,7 @@ describe('MusicAssistantCardEditor', () => {
 
     expect(changes).toHaveLength(1);
     expect(changes[0].detail.config.show_queue).toBe(false);
-    expect(changes[0].detail.config).not.toHaveProperty('config_entry_id');
+    expect(changes[0].detail.config).not.toHaveProperty('ingress_path');
   });
 
   it('persists the selected click action from ha-select', () => {
@@ -85,27 +85,20 @@ describe('MusicAssistantCardEditor', () => {
 
     expect((editor.querySelector('#player') as HTMLElement & { value?: string }).value).toBe('');
     expect((editor.querySelector('#action') as HTMLElement & { value?: string }).value).toBe('play');
-    expect((editor.querySelector('#ingress-path') as HTMLElement & { value?: string }).value).toBe('/d5369777_music_assistant');
+    expect((editor.querySelector('#player-list') as HTMLElement & { value?: string }).value).toBe('all');
   });
 
-  it('preserves a blank ingress path for automatic discovery', () => {
-    const editor = new MusicAssistantCardEditor();
-    editor.setConfig({ type: 'custom:music-assistant-card', player: '', ingress_path: '' });
-
-    expect((editor.querySelector('#ingress-path') as HTMLElement & { value?: string }).value).toBe('');
-  });
-
-  it('persists a typed ingress path from ha-input', () => {
+  it('persists the selected player visibility mode', () => {
     const editor = new MusicAssistantCardEditor();
     editor.setConfig({ type: 'custom:music-assistant-card', player: '' });
     const changes: CustomEvent[] = [];
     editor.addEventListener('config-changed', (event) => changes.push(event as CustomEvent));
 
-    const ingressPath = editor.querySelector('#ingress-path') as HTMLElement & { value?: string };
-    ingressPath.value = '/custom-music-assistant';
-    ingressPath.dispatchEvent(new Event('input', { bubbles: true }));
+    const playerList = editor.querySelector('#player-list') as HTMLElement & { value?: string };
+    playerList.value = 'selected';
+    playerList.dispatchEvent(new Event('selected', { bubbles: true }));
 
     expect(changes).toHaveLength(1);
-    expect(changes[0].detail.config.ingress_path).toBe('/custom-music-assistant');
+    expect(changes[0].detail.config.player_list).toBe('selected');
   });
 });

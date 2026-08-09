@@ -27,8 +27,8 @@ export interface LovelaceCardConfig {
 
 export interface MusicAssistantCardConfig extends LovelaceCardConfig {
   player: string;
-  config_entry_id?: string;
-  ingress_path?: string;
+  player_list?: 'all' | 'selected';
+  players?: string[];
   layout?: 'two-column';
   show_search?: boolean;
   show_queue?: boolean;

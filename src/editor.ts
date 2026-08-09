@@ -1,13 +1,13 @@
 import type { HomeAssistant, MusicAssistantCardConfig } from './home-assistant';
-import { DEFAULT_MUSIC_ASSISTANT_INGRESS_PATH } from './music-assistant/ingress';
 
 const EDITOR_TAG = 'music-assistant-card-editor';
 
 type HassControl = HTMLElement & {
   hass?: HomeAssistant;
-  value?: string;
+  value?: string | string[];
   checked?: boolean;
   includeDomains?: string[];
+  multiple?: boolean;
   label?: string;
 };
 
@@ -16,7 +16,8 @@ export class MusicAssistantCardEditor extends HTMLElement {
   private config: MusicAssistantCardConfig = {
     type: 'custom:music-assistant-card',
     player: '',
-    ingress_path: DEFAULT_MUSIC_ASSISTANT_INGRESS_PATH,
+    player_list: 'all',
+    players: [],
     layout: 'two-column',
     show_search: true,
     show_queue: true,
@@ -25,8 +26,7 @@ export class MusicAssistantCardEditor extends HTMLElement {
 
   setConfig(config: MusicAssistantCardConfig): void {
     const nextConfig = { ...this.config, ...config };
-    if (typeof nextConfig.config_entry_id !== 'string' || !nextConfig.config_entry_id.trim()) delete nextConfig.config_entry_id;
-    if (typeof nextConfig.ingress_path !== 'string') nextConfig.ingress_path = DEFAULT_MUSIC_ASSISTANT_INGRESS_PATH;
+    if (!Array.isArray(nextConfig.players)) nextConfig.players = [];
     this.config = nextConfig;
     this.render();
   }
@@ -53,8 +53,15 @@ export class MusicAssistantCardEditor extends HTMLElement {
           <p class="hint">Choose a Music Assistant player or synchronized group from Home Assistant.</p>
         </div>
         <div class="field">
-          <ha-input id="ingress-path" label="Music Assistant ingress path"></ha-input>
-          <p class="hint">Use the configured path, or leave blank to discover the installed add-on automatically.</p>
+          <ha-entity-picker id="players" label="Selected players"></ha-entity-picker>
+          <p class="hint">Used when Players shown is set to Selected players.</p>
+        </div>
+        <div class="field">
+          <ha-select id="player-list" label="Players shown">
+            <ha-list-item value="all">All players</ha-list-item>
+            <ha-list-item value="selected">Selected players</ha-list-item>
+          </ha-select>
+          <p class="hint">The primary player is always included.</p>
         </div>
         <div class="field">
           <ha-select id="action" label="When a song is selected">
@@ -75,10 +82,17 @@ export class MusicAssistantCardEditor extends HTMLElement {
     player.label = 'Player entity';
     this.listenValue(player, 'player');
 
-    const ingressPath = this.getControl('ingress-path');
-    ingressPath.value = this.config.ingress_path ?? DEFAULT_MUSIC_ASSISTANT_INGRESS_PATH;
-    ingressPath.label = 'Music Assistant ingress path';
-    this.listenTextValue(ingressPath, 'ingress_path');
+    const playerList = this.getControl('player-list');
+    playerList.value = this.config.player_list ?? 'all';
+    this.listenSelect(playerList, 'player_list');
+
+    const players = this.getControl('players');
+    players.hass = this._hass;
+    players.value = this.config.players ?? [];
+    players.includeDomains = ['media_player'];
+    players.multiple = true;
+    players.label = 'Selected players';
+    this.listenValue(players, 'players');
 
     const action = this.getControl('action');
     action.value = this.config.click_action ?? 'play';
@@ -99,28 +113,12 @@ export class MusicAssistantCardEditor extends HTMLElement {
 
   private listenValue(control: HassControl, name: keyof MusicAssistantCardConfig): void {
     const updateValue = (event: Event): void => {
-      const detailValue = (event as CustomEvent<{ value?: string }>).detail?.value;
-      const value = typeof detailValue === 'string' ? detailValue : (event.currentTarget as HassControl).value;
-      if (typeof value === 'string') this.updateConfig(name, value);
+      const detailValue = (event as CustomEvent<{ value?: string | string[] }>).detail?.value;
+      const value = detailValue ?? (event.currentTarget as HassControl).value;
+      if (typeof value === 'string' || Array.isArray(value)) this.updateConfig(name, value);
     };
     control.addEventListener('value-changed', updateValue);
     control.addEventListener('selected', updateValue);
-  }
-
-  private listenTextValue(control: HassControl, name: keyof MusicAssistantCardConfig): void {
-    let lastValue = control.value;
-    const applyValue = (value: unknown): void => {
-      if (typeof value !== 'string' || value === lastValue) return;
-      lastValue = value;
-      this.updateConfig(name, value);
-    };
-    const updateValue = (event: Event): void => {
-      const detailValue = (event as CustomEvent<{ value?: string }>).detail?.value;
-      applyValue(typeof detailValue === 'string' ? detailValue : (event.currentTarget as HassControl).value);
-    };
-    control.addEventListener('value-changed', updateValue);
-    control.addEventListener('input', updateValue);
-    control.addEventListener('change', updateValue);
   }
 
   private listenSelect(control: HassControl, name: keyof MusicAssistantCardConfig): void {
@@ -145,7 +143,7 @@ export class MusicAssistantCardEditor extends HTMLElement {
     control.addEventListener('change', () => this.updateConfig(name, Boolean(control.checked)));
   }
 
-  private updateConfig(name: keyof MusicAssistantCardConfig, value: string | boolean): void {
+  private updateConfig(name: keyof MusicAssistantCardConfig, value: string | string[] | boolean): void {
     this.config = { ...this.config, [name]: value } as MusicAssistantCardConfig;
     this.dispatchEvent(new CustomEvent('config-changed', { bubbles: true, composed: true, detail: { config: this.config } }));
   }

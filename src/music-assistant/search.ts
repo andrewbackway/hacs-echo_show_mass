@@ -21,10 +21,8 @@ export type SearchResponse = Partial<Record<SearchGroup, SearchItem[]>>;
 export async function searchMusicAssistant(
   hass: HomeAssistant,
   query: string,
-  configEntryId: string,
 ): Promise<SearchResponse> {
   const result = await hass.callService<unknown>('music_assistant', 'search', {
-    config_entry_id: configEntryId,
     name: query,
     limit: 12,
   }, undefined, true, true);
