@@ -13,6 +13,7 @@ export interface ActionContext {
   loadQueue(): Promise<void>;
   loadMedia(mediaContentId: string, path: MediaItem[]): Promise<void>;
   loadSpeakers(): Promise<void>;
+  loadLibrary(append?: boolean): Promise<void>;
   getCurrentSpeakerSelection(): string[];
 }
 
@@ -83,6 +84,22 @@ export async function handleControl(context: ActionContext, control: string): Pr
         clearQueueConfirmOpen: false,
       },
     });
+    if (context.getState().uiState.primaryView === 'search') void context.loadLibrary();
+    return;
+  }
+  if (control.startsWith('library-category:')) {
+    const category = control.slice('library-category:'.length);
+    const state = context.getState();
+    const libraryState = state.libraryState;
+    const selectedCategory = libraryState.selectedCategory === category ? null : (category as typeof libraryState.selectedCategory);
+    context.setState({
+      libraryState: { ...libraryState, selectedCategory, query: '', items: [], offset: 0, hasMore: false, error: undefined },
+    });
+    if (selectedCategory) void context.loadLibrary();
+    return;
+  }
+  if (control === 'library-load-more') {
+    void context.loadLibrary(true);
     return;
   }
   if (control === 'close-flyout') {

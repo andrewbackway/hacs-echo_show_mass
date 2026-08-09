@@ -11,16 +11,16 @@ export function renderQueueHeader(shuffleEnabled: boolean): TemplateResult {
         class="queue-action"
         data-control="clear-queue-request"
         type="button"
-        aria-label="Clear queue"
-        title="Clear queue"
+        aria-label="Clear Queue"
+        title="Clear Queue"
       >
-        <ha-icon icon="mdi:close"></ha-icon></button
+        <ha-icon icon="mdi:delete"></ha-icon></button
       ><button
         class="queue-action${shuffleEnabled ? ' active' : ''}"
         data-control="shuffle"
         type="button"
         aria-pressed="${shuffleEnabled}"
-        aria-label="Toggle shuffle"
+        aria-label="Toggle Shuffle"
         title="Toggle shuffle"
       >
         <ha-icon icon="mdi:shuffle"></ha-icon></button

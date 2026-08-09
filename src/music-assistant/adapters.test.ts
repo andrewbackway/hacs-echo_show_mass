@@ -3,6 +3,7 @@ import type { HomeAssistant } from '../home-assistant';
 import { browseMedia } from './media-browser';
 import { getQueue } from './queue';
 import { searchMusicAssistant } from './search';
+import { getLibrary } from './library';
 
 function createHass(callService = vi.fn(), callWS?: HomeAssistant['callWS']): HomeAssistant {
   return { states: {}, callService, callWS };
@@ -53,6 +54,29 @@ describe('Home Assistant Music Assistant adapters', () => {
       undefined,
       { entity_id: 'media_player.living_room' },
       false,
+      true,
+    );
+  });
+
+  it('requests a sorted paged library category with the Music Assistant config entry', async () => {
+    const callService = vi.fn().mockResolvedValue({
+      response: { items: [{ name: 'Album', uri: 'album://1' }], limit: 50, offset: 0, order_by: 'name', media_type: 'album' },
+    });
+    await expect(
+      getLibrary(createHass(callService), {
+        configEntryId: 'entry-1',
+        mediaType: 'album',
+        limit: 50,
+        offset: 0,
+        orderBy: 'name',
+      }),
+    ).resolves.toMatchObject({ items: [{ name: 'Album', uri: 'album://1', media_type: 'album' }] });
+    expect(callService).toHaveBeenCalledWith(
+      'music_assistant',
+      'get_library',
+      { config_entry_id: 'entry-1', media_type: 'album', limit: 50, offset: 0, order_by: 'name' },
+      undefined,
+      true,
       true,
     );
   });

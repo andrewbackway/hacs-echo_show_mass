@@ -1,8 +1,9 @@
-import type { BrowseState, CardUiState, QueueState, SearchState, SpeakerState } from './card.types';
+import type { BrowseState, CardUiState, LibraryState, QueueState, SearchState, SpeakerState } from './card.types';
 
 export interface CardState {
   browseState: BrowseState;
   searchState: SearchState;
+  libraryState: LibraryState;
   queueState: QueueState;
   speakerState: SpeakerState;
   uiState: CardUiState;
@@ -13,6 +14,16 @@ export function createInitialState(): CardState {
   return {
     browseState: { loading: false, path: [] },
     searchState: { query: '', loading: false },
+    libraryState: {
+      selectedCategory: 'favorites',
+      query: '',
+      loading: false,
+      loadingMore: false,
+      items: [],
+      limit: 50,
+      offset: 0,
+      hasMore: false,
+    },
     queueState: { loading: false },
     speakerState: { loading: false },
     uiState: { primaryView: 'now-playing', activeFlyout: null, clearQueueConfirmOpen: false },

@@ -7,6 +7,7 @@ import type {
 } from './home-assistant';
 import { browseMedia } from './music-assistant/media-browser';
 import { searchMusicAssistant } from './music-assistant/search';
+import { getLibrary, type LibraryMediaType } from './music-assistant/library';
 import { getQueue } from './music-assistant/queue';
 import { type MediaItem } from './music-assistant/media-browser';
 import { html, nothing, render as renderTemplate } from 'lit-html';
@@ -18,7 +19,7 @@ import { callService, runAction, type ActionContext } from './card/actions';
 import { createClickHandler } from './card/events';
 import { renderTopMenu } from './card/views/topmenu.view';
 import { renderNowPlaying } from './card/views/now-playing.view';
-import { renderSearchInput, renderSearchResults } from './card/views/search.view';
+import { renderLibraryNavigation, renderLibraryResults, renderSearchInput, renderSearchResults } from './card/views/search.view';
 import { renderMediaList, renderPath } from './card/views/media-list.view';
 import { renderActiveFlyout } from './card/views/flyout.view';
 import './editor';
@@ -35,6 +36,7 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
       type: 'custom:music-assistant-card',
       player: '',
       layout: 'two-column',
+      music_assistant_config_entry_id: '',
       show_search: true,
       show_queue: true,
       click_action: 'play',
@@ -51,6 +53,7 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
   private readonly mediaRequests = new RequestGuard();
   private readonly queueRequests = new RequestGuard();
   private readonly searchRequests = new RequestGuard();
+  private readonly libraryRequests = new RequestGuard();
   private progressTimer?: ReturnType<typeof setInterval>;
   private progressStartedAt = 0;
   private progressStartPosition = 0;
@@ -70,6 +73,7 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
     loadQueue: () => this.loadQueue(),
     loadMedia: (mediaContentId, path) => this.loadMedia(mediaContentId, path),
     loadSpeakers: () => this.loadSpeakers(),
+    loadLibrary: (append) => this.loadLibrary(undefined, undefined, append),
     getCurrentSpeakerSelection: () => this.getCurrentSpeakerSelection(),
   };
 
@@ -103,6 +107,8 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
     this.config = {
       type: CARD_TAG,
       layout: 'two-column',
+      music_assistant_config_entry_id:
+        typeof config.music_assistant_config_entry_id === 'string' ? config.music_assistant_config_entry_id.trim() : '',
       show_search: true,
       show_queue: true,
       click_action: 'play',
@@ -112,15 +118,19 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
         ? config.players.filter((player): player is string => typeof player === 'string' && player.trim().length > 0)
         : [],
     };
+    if (!this.config.music_assistant_config_entry_id)
+      this.store.setState({ libraryState: { ...this.store.getState().libraryState, selectedCategory: null } });
     if (
       previousConfig &&
       (previousConfig.player !== this.config.player ||
-        JSON.stringify(previousConfig.players) !== JSON.stringify(this.config.players))
+        JSON.stringify(previousConfig.players) !== JSON.stringify(this.config.players) ||
+        previousConfig.music_assistant_config_entry_id !== this.config.music_assistant_config_entry_id)
     ) {
       this.queueRequested = false;
       this.mediaRequests.invalidate();
       this.queueRequests.invalidate();
       this.searchRequests.invalidate();
+      this.libraryRequests.invalidate();
       this.store.setState(createInitialState());
     } else {
       this.render();
@@ -155,6 +165,16 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
     if (this.config?.show_queue && !this.queueRequested) {
       this.queueRequested = true;
       void this.loadQueue();
+    }
+    const libraryState = this.store.getState().libraryState;
+    if (
+      this.config?.music_assistant_config_entry_id &&
+      this.store.getState().uiState.primaryView === 'search' &&
+      !libraryState.loading &&
+      !libraryState.loadingMore &&
+      libraryState.items.length === 0
+    ) {
+      void this.loadLibrary();
     }
   }
 
@@ -259,21 +279,23 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
   private render(): void {
     if (!this.config) return;
     this.syncProgressTimer();
-    const { browseState, searchState, queueState, speakerState, uiState, operationError } = this.store.getState();
+    const { browseState, searchState, libraryState, queueState, speakerState, uiState, operationError } =
+      this.store.getState();
     const mediaItems = browseState.response?.children ?? [];
     const player = this._hass?.states[this.config.player];
 
     const primary =
       uiState.primaryView === 'search'
         ? html`<section class="search-screen primary-view" data-primary-view="search">
-            ${this.config.show_search ? renderSearchInput(searchState.query) : nothing}
+            ${this.config.show_search ? renderSearchInput(libraryState.query || searchState.query) : nothing}
             <div class="search-layout">
-              <section class="search-navigation" aria-label="Browse navigation">
-                <p class="panel-copy">Browse providers, folders, playlists, albums, and artists.</p>
-                ${renderPath(browseState.path)}
-              </section>
+              ${renderLibraryNavigation(libraryState.selectedCategory)}
               <section class="search-results" aria-label="Media results">
-                ${searchState.query ? renderSearchResults(searchState) : renderMediaList(browseState, mediaItems)}
+                ${libraryState.selectedCategory
+                  ? renderLibraryResults(libraryState)
+                  : searchState.query
+                    ? renderSearchResults(searchState)
+                    : html`${renderPath(browseState.path)}${renderMediaList(browseState, mediaItems)}`}
               </section>
             </div>
           </section>`
@@ -334,6 +356,139 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
     }
   }
 
+  private async loadLibrary(
+    selectedCategory = this.store.getState().libraryState.selectedCategory,
+    query = this.store.getState().libraryState.query,
+    append = false,
+  ): Promise<void> {
+    if (!this._hass || !this.config?.music_assistant_config_entry_id || !selectedCategory) return;
+    if (selectedCategory === 'favorites') {
+      await this.loadFavorites(query, append);
+      return;
+    }
+    await this.loadLibraryPage(selectedCategory, query, append, false);
+  }
+
+  private async loadFavorites(query: string, append: boolean): Promise<void> {
+    const current = this.store.getState().libraryState;
+    const selectedCategory = current.selectedCategory;
+    if (selectedCategory !== 'favorites' || !this._hass || !this.config?.music_assistant_config_entry_id) return;
+    const request = this.libraryRequests.begin();
+    const offset = append ? current.offset + current.items.length : 0;
+    this.store.setState({
+      libraryState: {
+        ...current,
+        loading: !append,
+        loadingMore: append,
+        error: undefined,
+        items: append ? current.items : [],
+        offset,
+      },
+    });
+    try {
+      const mediaTypes: LibraryMediaType[] = ['artist', 'album', 'track', 'playlist', 'podcast', 'radio'];
+      const responses = await Promise.all(
+        mediaTypes.map((mediaType) =>
+          getLibrary(this._hass!, {
+            configEntryId: this.config!.music_assistant_config_entry_id!,
+            mediaType,
+            favorite: true,
+            search: query.trim() || undefined,
+            limit: current.limit,
+            offset,
+            orderBy: 'name',
+          }),
+        ),
+      );
+      if (!request.isCurrent() || this.store.getState().libraryState.selectedCategory !== 'favorites') return;
+      const loadedItems = responses
+        .flatMap((response) => response.items)
+        .filter((item, index, all) => all.findIndex((candidate) => candidate.uri === item.uri) === index);
+      const items = append
+        ? [...current.items, ...loadedItems.filter((item) => !current.items.some((existing) => existing.uri === item.uri))]
+        : loadedItems;
+      this.store.setState({
+        libraryState: {
+          ...this.store.getState().libraryState,
+          loading: false,
+          loadingMore: false,
+          items,
+          offset,
+          hasMore: responses.some((response) => response.items.length === current.limit),
+        },
+      });
+    } catch (error) {
+      if (!request.isCurrent()) return;
+      this.store.setState({
+        libraryState: {
+          ...this.store.getState().libraryState,
+          loading: false,
+          loadingMore: false,
+          error: error instanceof Error ? error.message : 'Unable to load favorites.',
+        },
+      });
+    }
+  }
+
+  private async loadLibraryPage(
+    mediaType: LibraryMediaType,
+    query: string,
+    append: boolean,
+    favorite: boolean,
+  ): Promise<void> {
+    const current = this.store.getState().libraryState;
+    const selectedCategory = current.selectedCategory;
+    if (!selectedCategory || !this._hass || !this.config?.music_assistant_config_entry_id) return;
+    const offset = append ? current.offset + current.items.length : 0;
+    const request = this.libraryRequests.begin();
+    this.store.setState({
+      libraryState: {
+        ...current,
+        loading: !append,
+        loadingMore: append,
+        error: undefined,
+        items: append ? current.items : [],
+        offset,
+      },
+    });
+    try {
+      const response = await getLibrary(this._hass, {
+        configEntryId: this.config.music_assistant_config_entry_id,
+        mediaType,
+        favorite,
+        search: query.trim() || undefined,
+        limit: current.limit,
+        offset,
+        orderBy: 'name',
+      });
+      const latest = this.store.getState().libraryState;
+      if (!request.isCurrent() || latest.selectedCategory !== selectedCategory || latest.query !== query) return;
+      const items = append
+        ? [...latest.items, ...response.items.filter((item) => !latest.items.some((existing) => existing.uri === item.uri))]
+        : response.items;
+      this.store.setState({
+        libraryState: {
+          ...latest,
+          loading: false,
+          loadingMore: false,
+          items,
+          offset,
+          hasMore: response.items.length === latest.limit,
+        },
+      });
+    } catch (error) {
+      if (!request.isCurrent()) return;
+      this.store.setState({
+        libraryState: {
+          ...this.store.getState().libraryState,
+          loading: false,
+          loadingMore: false,
+          error: error instanceof Error ? error.message : 'Unable to load library.',
+        },
+      });
+    }
+  }
+
   private bindEvents(): void {
     if (this.eventsBound) return;
     this.eventsBound = true;
@@ -342,7 +497,13 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
       const target = event.target as HTMLInputElement;
       if (!target.matches('[data-search]')) return;
       this.clearSearchTimer();
-      this.searchTimer = setTimeout(() => void this.runSearch(target.value), 350);
+      this.searchTimer = setTimeout(() => {
+        const libraryState = this.store.getState().libraryState;
+        if (libraryState.selectedCategory) {
+          this.store.setState({ libraryState: { ...libraryState, query: target.value.trim() } });
+          void this.loadLibrary(libraryState.selectedCategory, target.value.trim());
+        } else void this.runSearch(target.value);
+      }, 350);
     });
     this.root.addEventListener('change', (event) => {
       const target = event.target as HTMLInputElement;
@@ -399,6 +560,7 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
     this.mediaRequests.invalidate();
     this.queueRequests.invalidate();
     this.searchRequests.invalidate();
+    this.libraryRequests.invalidate();
   }
 }
 

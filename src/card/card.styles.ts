@@ -2,7 +2,7 @@ export const cardStyles = `
   /* Host & shell */
   :host { --music-bg: var(--card-background-color, #101416); --music-surface: #171d20; --music-raised: #20282b; --music-line: #2d383b; --music-text: var(--primary-text-color, #f2f6f5); --music-muted: var(--secondary-text-color, #9ba9aa); --music-accent: var(--primary-color, #65d6c7); display: block; color: var(--music-text); font-family: var(--paper-font-body1_-_font-family, 'Segoe UI', sans-serif); }
   .card { min-height: 240px; box-sizing: border-box; padding: 14px; border: 1px solid var(--music-line); border-radius: 12px; background: var(--music-bg); box-shadow: 0 12px 28px rgb(0 0 0 / 24%); }
-  .card { --music-card-height: 430px; --music-header-height: 56px; --music-touch-target: 48px; --music-list-row-height: 56px; --music-flyout-width: clamp(360px, 50%, 500px); position: relative; height: min(var(--music-card-height), calc(100dvh - var(--music-dashboard-chrome, 0px))); max-height: calc(100dvh - var(--music-dashboard-chrome, 0px)); overflow: hidden; }
+  .card { --music-card-height: 430px; --music-header-height: 45px; --music-touch-target: 48px; --music-list-row-height: 56px; --music-flyout-width: clamp(360px, 50%, 500px); position: relative; height: min(var(--music-card-height), calc(100dvh - var(--music-dashboard-chrome, 0px))); max-height: calc(100dvh - var(--music-dashboard-chrome, 0px)); overflow: hidden; }
 
   /* Top menu */
   .top-menu { position: absolute; z-index: 10; inset: 14px 14px auto; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; min-height: var(--music-header-height); pointer-events: none; }
@@ -32,8 +32,16 @@ export const cardStyles = `
 
   /* Search / browse */
   .search-screen { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 10px; padding-top: var(--music-header-height); }
-  .search-layout { display: grid; grid-template-columns: minmax(160px, .35fr) minmax(0, 1fr); gap: 16px; min-height: 0; }
+  .search-layout { display: grid; grid-template-columns: 156px minmax(0, 1fr); gap: 16px; min-height: 0; }
   .search-navigation, .search-results { min-height: 0; overflow: auto; overscroll-behavior: contain; }
+  .library-navigation { display: grid; align-content: start; gap: 4px; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+  .library-category { width: 100%; min-height: var(--music-touch-target); display: flex; align-items: center; gap: 9px; padding: 7px 9px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--music-muted); font: inherit; text-align: left; cursor: pointer; }
+  .library-category:hover, .library-category:focus-visible { background: var(--music-raised); color: var(--music-text); outline: none; }
+  .library-category:focus-visible { box-shadow: 0 0 0 2px var(--music-accent) inset; }
+  .library-category.selected { border-color: var(--music-accent); background: rgb(101 214 199 / 10%); color: var(--music-accent); }
+  .library-category span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .library-list { padding-right: 4px; }
+  .load-more { width: 100%; margin-top: 8px; }
   .search-results { padding-right: 4px; }
   .primary-header, .flyout-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: var(--music-header-height); }
 
@@ -138,5 +146,5 @@ export const cardStyles = `
 
   /* Media queries */
   @media (prefers-reduced-motion: reduce) { .media-row, .back-button, .control, .queue-action { transition: none; } }
-  @media (max-width: 680px) { .search-layout, .playback { grid-template-columns: 1fr; } .playback { gap: 12px; } .top-menu { grid-template-columns: minmax(0, 1fr) auto; gap: 6px; } .flyout { width: min(100%, 440px); } }
+  @media (max-width: 680px) { .search-layout, .playback { grid-template-columns: 1fr; } .search-layout { grid-template-rows: auto minmax(0, 1fr); gap: 8px; } .library-navigation { display: flex; overflow-x: auto; overflow-y: hidden; } .library-category { width: auto; flex: 0 0 auto; } .playback { gap: 12px; } .top-menu { grid-template-columns: minmax(0, 1fr) auto; gap: 6px; } .flyout { width: min(100%, 440px); } }
 `;

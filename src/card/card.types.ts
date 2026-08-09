@@ -2,6 +2,7 @@ import type { HassEntity } from '../home-assistant';
 import type { MediaBrowseResponse, MediaItem } from '../music-assistant/media-browser';
 import type { QueueDetails } from '../music-assistant/queue';
 import type { SearchResponse } from '../music-assistant/search';
+import type { LibraryItem, LibraryMediaType } from '../music-assistant/library';
 
 export interface BrowseState {
   loading: boolean;
@@ -15,6 +16,20 @@ export interface SearchState {
   loading: boolean;
   error?: string;
   response?: SearchResponse;
+}
+
+export type LibraryCategory = 'favorites' | LibraryMediaType;
+
+export interface LibraryState {
+  selectedCategory: LibraryCategory | null;
+  query: string;
+  loading: boolean;
+  loadingMore: boolean;
+  error?: string;
+  items: LibraryItem[];
+  limit: number;
+  offset: number;
+  hasMore: boolean;
 }
 
 export interface QueueState {

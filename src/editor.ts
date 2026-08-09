@@ -9,6 +9,7 @@ type HassControl = HTMLElement & {
   includeDomains?: string[];
   multiple?: boolean;
   label?: string;
+  type?: string;
 };
 
 export class MusicAssistantCardEditor extends HTMLElement {
@@ -16,6 +17,7 @@ export class MusicAssistantCardEditor extends HTMLElement {
   private config: MusicAssistantCardConfig = {
     type: 'custom:music-assistant-card',
     player: '',
+    music_assistant_config_entry_id: '',
     players: [],
     layout: 'two-column',
     show_search: true,
@@ -52,6 +54,10 @@ export class MusicAssistantCardEditor extends HTMLElement {
           <p class="hint">Choose a Music Assistant player or synchronized group from Home Assistant.</p>
         </div>
         <div class="field">
+          <ha-textfield id="config-entry-id" label="Music Assistant config entry ID"></ha-textfield>
+          <p class="hint">Required for Favorites and category library loading. Find it in the Music Assistant integration entry.</p>
+        </div>
+        <div class="field">
           <ha-entity-picker id="players" label="Permitted Players"></ha-entity-picker>
           <p class="hint">Optional. Leave blank to permit all players. The primary player is always included.</p>
         </div>
@@ -73,6 +79,11 @@ export class MusicAssistantCardEditor extends HTMLElement {
     player.includeDomains = ['media_player'];
     player.label = 'Player entity';
     this.listenValue(player, 'player');
+
+    const configEntryId = this.getControl('config-entry-id');
+    configEntryId.value = this.config.music_assistant_config_entry_id ?? '';
+    configEntryId.label = 'Music Assistant config entry ID';
+    this.listenValue(configEntryId, 'music_assistant_config_entry_id');
 
     const players = this.getControl('players');
     players.hass = this._hass;

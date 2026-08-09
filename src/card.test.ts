@@ -28,6 +28,7 @@ describe('MusicAssistantCard', () => {
     expect(MusicAssistantCard.getStubConfig()).toEqual({
       type: 'custom:music-assistant-card',
       player: '',
+      music_assistant_config_entry_id: '',
       layout: 'two-column',
       show_search: true,
       show_queue: true,
@@ -68,6 +69,29 @@ describe('MusicAssistantCard', () => {
 
     expect(callWS).not.toHaveBeenCalled();
     expect(card.shadowRoot?.querySelector('[data-search]')).toBeTruthy();
+  });
+
+  it('loads Favorites across every documented library media type', async () => {
+    const calls: Array<Record<string, unknown>> = [];
+    const callService = vi.fn().mockImplementation((_domain, service, data) => {
+      if (service === 'get_queue') return Promise.resolve({ response: { items: [] } });
+      calls.push(data);
+      return Promise.resolve({ response: { items: [{ name: String(data.media_type), uri: `${data.media_type}://1` }] } });
+    });
+    const card = new MusicAssistantCard();
+    card.setConfig({
+      type: 'custom:music-assistant-card',
+      player: 'media_player.living_room',
+      music_assistant_config_entry_id: 'entry-1',
+      show_queue: false,
+    });
+    card.hass = createHass(callService);
+    card.shadowRoot?.querySelector<HTMLElement>('[data-control="discover"]')?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(calls).toHaveLength(6);
+    expect(calls.every((data) => data.config_entry_id === 'entry-1' && data.favorite === true)).toBe(true);
+    expect(card.shadowRoot?.querySelectorAll('.library-category.selected')).toHaveLength(1);
+    expect(card.shadowRoot?.querySelectorAll('.media-title')).toHaveLength(6);
   });
 
   it('uses music_assistant.play_media for playback', async () => {
