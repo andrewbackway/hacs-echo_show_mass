@@ -1,4 +1,5 @@
 import { html, nothing, type TemplateResult } from 'lit-html';
+import { repeat } from 'lit-html/directives/repeat.js';
 import { flattenSearchResults, type SearchItem } from '../../music-assistant/search';
 import type { SearchState } from '../card.types';
 import { renderRowActions } from './media-list.view';
@@ -20,7 +21,11 @@ export function renderSearchResults(searchState: SearchState): TemplateResult {
     (group) =>
       html`<section class="result-group">
         <h3 class="result-heading">${group}</h3>
-        ${results.filter((item) => item.group === group).map((item) => renderSearchItem(item))}
+        ${repeat(
+          results.filter((item) => item.group === group),
+          (item) => item.uri,
+          (item) => renderSearchItem(item),
+        )}
       </section>`,
   )}`;
 }

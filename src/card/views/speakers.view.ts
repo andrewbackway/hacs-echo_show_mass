@@ -1,4 +1,5 @@
 import { html, nothing, type TemplateResult } from 'lit-html';
+import { repeat } from 'lit-html/directives/repeat.js';
 import type { HassEntity } from '../../home-assistant';
 import type { SpeakerState } from '../card.types';
 
@@ -33,7 +34,10 @@ export function renderSpeakerSheet(
   );
   return html`<section class="speaker-sheet" aria-label="Players">
     <div class="speaker-list">
-      ${players.map((player) => {
+      ${repeat(
+        players,
+        (player) => player.entity_id,
+        (player) => {
         const selected = selectedIds.has(player.entity_id);
         return html`<div class="speaker-row${selected ? ' selected' : ''}">
           <button
@@ -64,7 +68,8 @@ export function renderSpeakerSheet(
               : nothing
           }
         </div>`;
-      })}
+        },
+      )}
     </div>
     <div class="speaker-actions">
       <span class="panel-copy">Select players for playback</span

@@ -19,10 +19,12 @@ export function createInitialState(): CardState {
   };
 }
 
-/** Holds the card's render state and triggers exactly one `onChange` per `setState` call. */
+/** Holds the card's render state and notifies `onChange` after each `setState` call. */
 export class CardStore {
   private state: CardState = createInitialState();
   private readonly onChange: () => void;
+  private notifying = false;
+  private pendingNotify = false;
 
   constructor(onChange: () => void) {
     this.onChange = onChange;
@@ -34,10 +36,30 @@ export class CardStore {
 
   setState(patch: Partial<CardState>): void {
     this.state = { ...this.state, ...patch };
-    this.onChange();
+    this.notify();
   }
 
   reset(): void {
     this.state = createInitialState();
+  }
+
+  // Coalesces a setState triggered synchronously from inside an in-flight onChange (e.g. a
+  // render or event handler that immediately calls setState again) into a single follow-up
+  // notification, instead of letting it recurse into a second overlapping render pass.
+  private notify(): void {
+    if (this.notifying) {
+      this.pendingNotify = true;
+      return;
+    }
+    this.notifying = true;
+    try {
+      this.onChange();
+    } finally {
+      this.notifying = false;
+    }
+    if (this.pendingNotify) {
+      this.pendingNotify = false;
+      this.notify();
+    }
   }
 }

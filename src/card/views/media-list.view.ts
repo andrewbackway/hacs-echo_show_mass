@@ -1,4 +1,5 @@
 import { html, nothing, type TemplateResult } from 'lit-html';
+import { repeat } from 'lit-html/directives/repeat.js';
 import type { MediaItem } from '../../music-assistant/media-browser';
 import type { BrowseState } from '../card.types';
 
@@ -21,7 +22,13 @@ export function renderMediaList(browseState: BrowseState, items: MediaItem[]): T
   if (browseState.loading) return html`<p class="state" aria-live="polite">Loading media sources...</p>`;
   if (browseState.error) return html`<p class="state error" role="alert">${browseState.error}</p>`;
   if (items.length === 0) return html`<p class="state">This location has no media items.</p>`;
-  return html`<div class="media-list">${items.map((item, index) => renderMediaItem(item, index))}</div>`;
+  return html`<div class="media-list">
+    ${repeat(
+      items,
+      (item) => item.media_content_id,
+      (item, index) => renderMediaItem(item, index),
+    )}
+  </div>`;
 }
 
 export function renderMediaItem(item: MediaItem, index: number): TemplateResult {
