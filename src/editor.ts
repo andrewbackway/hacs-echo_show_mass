@@ -44,7 +44,7 @@ export class MusicAssistantCardEditor extends HTMLElement {
         .editor { display: grid; gap: 16px; padding: 4px 0; }
         .field { display: grid; gap: 6px; }
         .hint { margin: -2px 0 0; color: var(--secondary-text-color); font-size: 12px; line-height: 1.4; }
-        ha-entity-picker, ha-input, ha-select { display: block; width: 100%; }
+        ha-entity-picker, ha-input, ha-textfield, ha-select { display: block; width: 100%; }
         .switches { display: grid; gap: 4px; }
         ha-switch { --mdc-typography-body1-font-size: 14px; }
       </style>

@@ -94,6 +94,36 @@ describe('MusicAssistantCard', () => {
     expect(card.shadowRoot?.querySelectorAll('.media-title')).toHaveLength(6);
   });
 
+  it('loads the selected category when its rail button is clicked', async () => {
+    const callService = vi.fn().mockImplementation((_domain, service, _data) => {
+      if (service === 'get_queue') return Promise.resolve({ response: { items: [] } });
+      return Promise.resolve({ response: { items: [{ name: 'Artist', uri: 'artist://1' }] } });
+    });
+    const card = new MusicAssistantCard();
+    card.setConfig({
+      type: 'custom:music-assistant-card',
+      player: 'media_player.living_room',
+      music_assistant_config_entry_id: 'entry-1',
+      show_queue: false,
+    });
+    card.hass = createHass(callService);
+    card.shadowRoot?.querySelector<HTMLElement>('[data-control="discover"]')?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    callService.mockClear();
+
+    card.shadowRoot?.querySelector<HTMLElement>('[data-control="library-category:artist"]')?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(callService).toHaveBeenCalledWith(
+      'music_assistant',
+      'get_library',
+      { config_entry_id: 'entry-1', media_type: 'artist', limit: 50, offset: 0, order_by: 'name' },
+      undefined,
+      true,
+      true,
+    );
+  });
+
   it('uses music_assistant.play_media for playback', async () => {
     const callService = vi.fn().mockResolvedValue({});
     const card = new MusicAssistantCard();

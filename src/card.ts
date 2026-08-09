@@ -361,7 +361,18 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
     query = this.store.getState().libraryState.query,
     append = false,
   ): Promise<void> {
-    if (!this._hass || !this.config?.music_assistant_config_entry_id || !selectedCategory) return;
+    if (!selectedCategory) return;
+    if (!this._hass || !this.config?.music_assistant_config_entry_id) {
+      this.store.setState({
+        libraryState: {
+          ...this.store.getState().libraryState,
+          loading: false,
+          loadingMore: false,
+          error: 'Add the Music Assistant config entry ID to load library categories.',
+        },
+      });
+      return;
+    }
     if (selectedCategory === 'favorites') {
       await this.loadFavorites(query, append);
       return;
