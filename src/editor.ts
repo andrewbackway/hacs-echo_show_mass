@@ -16,7 +16,6 @@ export class MusicAssistantCardEditor extends HTMLElement {
   private config: MusicAssistantCardConfig = {
     type: 'custom:music-assistant-card',
     player: '',
-    player_list: 'all',
     players: [],
     layout: 'two-column',
     show_search: true,
@@ -53,15 +52,8 @@ export class MusicAssistantCardEditor extends HTMLElement {
           <p class="hint">Choose a Music Assistant player or synchronized group from Home Assistant.</p>
         </div>
         <div class="field">
-          <ha-entity-picker id="players" label="Selected players"></ha-entity-picker>
-          <p class="hint">Used when Players shown is set to Selected players.</p>
-        </div>
-        <div class="field">
-          <ha-select id="player-list" label="Players shown">
-            <ha-list-item value="all">All players</ha-list-item>
-            <ha-list-item value="selected">Selected players</ha-list-item>
-          </ha-select>
-          <p class="hint">The primary player is always included.</p>
+          <ha-entity-picker id="players" label="Permitted Players"></ha-entity-picker>
+          <p class="hint">Optional. Leave blank to permit all players. The primary player is always included.</p>
         </div>
         <div class="field">
           <ha-select id="action" label="When a song is selected">
@@ -82,16 +74,12 @@ export class MusicAssistantCardEditor extends HTMLElement {
     player.label = 'Player entity';
     this.listenValue(player, 'player');
 
-    const playerList = this.getControl('player-list');
-    playerList.value = this.config.player_list ?? 'all';
-    this.listenSelect(playerList, 'player_list');
-
     const players = this.getControl('players');
     players.hass = this._hass;
     players.value = this.config.players ?? [];
     players.includeDomains = ['media_player'];
     players.multiple = true;
-    players.label = 'Selected players';
+    players.label = 'Permitted Players';
     this.listenValue(players, 'players');
 
     const action = this.getControl('action');
@@ -115,7 +103,11 @@ export class MusicAssistantCardEditor extends HTMLElement {
     const updateValue = (event: Event): void => {
       const detailValue = (event as CustomEvent<{ value?: string | string[] }>).detail?.value;
       const value = detailValue ?? (event.currentTarget as HassControl).value;
-      if (typeof value === 'string' || Array.isArray(value)) this.updateConfig(name, value);
+      if (name === 'players') {
+        this.updateConfig(name, Array.isArray(value) ? value : value ? [value] : []);
+      } else if (typeof value === 'string' || Array.isArray(value)) {
+        this.updateConfig(name, value);
+      }
     };
     control.addEventListener('value-changed', updateValue);
     control.addEventListener('selected', updateValue);

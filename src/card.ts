@@ -89,10 +89,10 @@ const cardStyles = `
   .error { color: var(--error-color, #ff8f8f); }
   .back-button { min-height: 34px; padding-block: 3px; color: var(--music-accent); font-size: 12px; }
   .back-button span:first-child { font-size: 20px; line-height: 1; }
-  .search { display: flex; align-items: center; gap: 8px; margin: 10px 0 14px; padding: 0 9px; border: 1px solid var(--music-line); border-radius: 7px; background: var(--music-surface); }
+  .search { display: flex; align-items: center; align-self: start; gap: 8px; min-height: 0; height: auto; box-sizing: border-box; margin: 0; padding: 6px 9px; border: 1px solid var(--music-line); border-radius: 7px; background: var(--music-surface); }
   .search:focus-within { border-color: var(--music-accent); box-shadow: 0 0 0 1px var(--music-accent); }
   .search-icon { color: var(--music-muted); font-size: 17px; }
-  .search input { width: 100%; min-height: 36px; border: 0; outline: 0; background: transparent; color: inherit; font: inherit; font-size: 13px; }
+  .search input { width: 100%; min-height: 0; border: 0; outline: 0; background: transparent; color: inherit; font: inherit; font-size: 13px; line-height: 1.4; }
   .search input::placeholder { color: var(--music-muted); }
   .result-group { display: grid; gap: 4px; margin-bottom: 14px; }
   .result-heading { margin: 0 7px 2px; color: var(--music-muted); font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
@@ -181,7 +181,6 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
     return {
       type: 'custom:music-assistant-card',
       player: '',
-      player_list: 'all',
       layout: 'two-column',
       show_search: true,
       show_queue: true,
@@ -195,12 +194,14 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
   private browseState: BrowseState = { loading: false, path: [] };
   private searchState: SearchState = { query: '', loading: false };
   private queueState: QueueState = { loading: false };
-  private mediaRequested = false;
   private queueRequested = false;
   private searchTimer?: ReturnType<typeof setTimeout>;
   private mediaRequestId = 0;
   private queueRequestId = 0;
   private searchRequestId = 0;
+  private progressTimer?: ReturnType<typeof setInterval>;
+  private progressStartedAt = 0;
+  private progressStartPosition = 0;
   private lifecycleId = 0;
   private needsReconnectLoad = false;
   private operationError?: string;
@@ -218,15 +219,13 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
   setConfig(config: LovelaceCardConfig): void {
     if (!config || typeof config !== 'object') throw new Error('Music Assistant Card: configuration is required.');
     if (typeof config.player !== 'string' || !config.player.trim()) throw new Error('Music Assistant Card: a player entity is required.');
-    if (config.player_list !== undefined && !['all', 'selected'].includes(String(config.player_list))) throw new Error('Music Assistant Card: player_list must be "all" or "selected".');
     if (config.players !== undefined && (!Array.isArray(config.players) || config.players.some((player) => typeof player !== 'string'))) throw new Error('Music Assistant Card: players must be a list of entity IDs.');
     if (config.click_action && !['play', 'queue'].includes(String(config.click_action))) throw new Error('Music Assistant Card: click_action must be "play" or "queue".');
 
     const previousConfig = this.config;
     const providedConfig = Object.fromEntries(Object.entries(config).filter(([key]) => key !== 'type' && !key.startsWith('music_assistant_')));
-    this.config = { type: CARD_TAG, layout: 'two-column', show_search: true, show_queue: true, click_action: 'play', player_list: 'all', ...providedConfig, player: config.player.trim(), players: Array.isArray(config.players) ? config.players.filter((player): player is string => typeof player === 'string' && player.trim().length > 0) : [] };
-    if (previousConfig && (previousConfig.player !== this.config.player || previousConfig.player_list !== this.config.player_list || JSON.stringify(previousConfig.players) !== JSON.stringify(this.config.players))) {
-      this.mediaRequested = false;
+    this.config = { type: CARD_TAG, layout: 'two-column', show_search: true, show_queue: true, click_action: 'play', ...providedConfig, player: config.player.trim(), players: Array.isArray(config.players) ? config.players.filter((player): player is string => typeof player === 'string' && player.trim().length > 0) : [] };
+    if (previousConfig && (previousConfig.player !== this.config.player || JSON.stringify(previousConfig.players) !== JSON.stringify(this.config.players))) {
       this.queueRequested = false;
       this.browseState = { loading: false, path: [] };
       this.queueState = { loading: false };
@@ -240,10 +239,10 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
 
   disconnectedCallback(): void {
     this.needsReconnectLoad = true;
-    this.mediaRequested = false;
     this.queueRequested = false;
     this.lifecycleId += 1;
     this.clearSearchTimer();
+    this.clearProgressTimer();
     this.invalidateRequests();
   }
 
@@ -261,10 +260,7 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
     if (sessionChanged) this.invalidateRequests();
     if (this.root.querySelector('.card')) this.updatePlayback();
     else this.render();
-    if (this.config && this.uiState.primaryView === 'search' && !this.mediaRequested) {
-      this.mediaRequested = true;
-      void this.loadMedia(ROOT_MEDIA_ID, []);
-    }
+    this.syncProgressTimer();
     if (this.config?.show_queue && !this.queueRequested) {
       this.queueRequested = true;
       void this.loadQueue();
@@ -279,6 +275,45 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
     const player = this._hass?.states[this.config.player];
     if (playback) playback.outerHTML = this.renderPlayback(player);
     else this.render();
+  }
+
+  private syncProgressTimer(): void {
+    const player = this.config ? this._hass?.states[this.config.player] : undefined;
+    if (this.uiState.primaryView !== 'now-playing' || player?.state !== 'playing') {
+      this.clearProgressTimer();
+      return;
+    }
+    if (this.progressTimer) return;
+    this.progressStartedAt = Date.now();
+    this.progressStartPosition = Number(player.attributes.media_position ?? 0);
+    this.progressTimer = setInterval(() => this.updateProgress(), 1000);
+  }
+
+  private clearProgressTimer(): void {
+    if (this.progressTimer) clearInterval(this.progressTimer);
+    this.progressTimer = undefined;
+  }
+
+  private updateProgress(): void {
+    if (!this.config || this.uiState.primaryView !== 'now-playing') return;
+    const player = this._hass?.states[this.config.player];
+    if (!player || player.state !== 'playing') {
+      this.syncProgressTimer();
+      return;
+    }
+    const attributes = player.attributes;
+    const duration = Number(attributes.media_duration ?? 0);
+    const basePosition = Number(attributes.media_position ?? this.progressStartPosition);
+    const updatedAt = Date.parse(String(attributes.media_position_updated_at ?? ''));
+    const elapsed = Number.isFinite(updatedAt) ? (Date.now() - updatedAt) / 1000 : (Date.now() - this.progressStartedAt) / 1000;
+    const position = Math.max(0, Math.min(basePosition + Math.max(0, elapsed), duration || Number.POSITIVE_INFINITY));
+    const slider = this.root.querySelector<HTMLInputElement>('[data-seek]');
+    const elapsedLabel = slider?.previousElementSibling;
+    if (slider) {
+      slider.max = String(duration || 1);
+      slider.value = String(position);
+    }
+    if (elapsedLabel) elapsedLabel.textContent = formatDuration(position);
   }
 
   private async loadMedia(mediaContentId: string, path: MediaItem[]): Promise<void> {
@@ -317,7 +352,6 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
 
   private render(): void {
     if (!this.config) return;
-    const currentTitle = this.browseState.response?.title ?? 'Media sources';
     const mediaItems = this.browseState.response?.children ?? [];
     const player = this._hass?.states[this.config.player];
     const searchInput = this.root.querySelector<HTMLInputElement>('[data-search]');
@@ -325,7 +359,7 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
     const searchSelection = searchInput ? [searchInput.selectionStart, searchInput.selectionEnd] : [null, null];
 
     const primary = this.uiState.primaryView === 'search'
-      ? `<section class="search-screen primary-view" data-primary-view="search" aria-labelledby="search-title"><div class="primary-header"><h1 class="panel-title" id="search-title">Search and browse</h1></div>${this.config.show_search ? this.renderSearch() : ''}<div class="search-layout"><section class="search-navigation" aria-label="Browse navigation"><p class="panel-copy">Browse providers, folders, playlists, albums, and artists.</p>${this.renderPath()}</section><section class="search-results" aria-labelledby="library-title"><div class="panel-header"><h2 class="panel-title" id="library-title">${this.searchState.query ? 'Search results' : escapeHtml(currentTitle)}</h2><span class="path">${this.searchState.query ? `${this.searchResultCount()} results` : `${mediaItems.length} items`}</span></div>${this.searchState.query ? this.renderSearchResults() : this.renderMediaList(mediaItems)}</section></div></section>`
+      ? `<section class="search-screen primary-view" data-primary-view="search">${this.config.show_search ? this.renderSearch() : ''}<div class="search-layout"><section class="search-navigation" aria-label="Browse navigation"><p class="panel-copy">Browse providers, folders, playlists, albums, and artists.</p>${this.renderPath()}</section><section class="search-results" aria-label="Media results">${this.searchState.query ? this.renderSearchResults() : this.renderMediaList(mediaItems)}</section></div></section>`
       : `<section class="now-playing-screen primary-view" data-primary-view="now-playing">${this.renderPlayback(player)}</section>`;
     this.root.innerHTML = `
       <style>${cardStyles}</style>
@@ -341,6 +375,7 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
       nextSearchInput?.focus();
       nextSearchInput?.setSelectionRange(searchSelection[0], searchSelection[1]);
     }
+    this.syncProgressTimer();
   }
 
   private renderTopMenu(): string {
@@ -458,10 +493,6 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
     const canExpand = item.can_expand === true;
     const canPlay = item.is_playable !== false;
     return `<div class="media-row" data-search-uri="${escapeHtml(item.uri)}" data-search-type="${escapeHtml(item.media_type ?? item.group)}" data-search-expand="${canExpand}"><span class="thumb" aria-hidden="true">${thumbnail}</span><span class="media-copy"><span class="media-title">${escapeHtml(item.name)}</span><span class="media-meta">${escapeHtml(canExpand ? `${metadata} · Open` : metadata)}</span></span>${canPlay ? this.renderRowActions() : ''}</div>`;
-  }
-
-  private searchResultCount(): number {
-    return flattenSearchResults(this.searchState.response ?? {}).length;
   }
 
   private async runSearch(query: string): Promise<void> {
@@ -635,10 +666,6 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
       this.uiState.primaryView = this.uiState.primaryView === 'search' ? 'now-playing' : 'search';
       this.uiState.activeFlyout = null;
       this.uiState.clearQueueConfirmOpen = false;
-      if (this.uiState.primaryView === 'search' && !this.mediaRequested) {
-        this.mediaRequested = true;
-        void this.loadMedia(ROOT_MEDIA_ID, []);
-      }
       this.render();
       return;
     }
@@ -720,7 +747,7 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
   }
 
   private isVisiblePlayer(player: HassEntity): boolean {
-    if (this.config?.player_list !== 'selected') return true;
+    if (!this.config?.players?.length) return true;
     return player.entity_id === this.config.player || (this.config.players ?? []).includes(player.entity_id);
   }
 

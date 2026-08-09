@@ -29,8 +29,10 @@ describe('MusicAssistantCardEditor', () => {
 
     expect(editor.querySelector('ha-entity-picker')).toBeTruthy();
     expect(editor.querySelector('#players')).toBeTruthy();
+    expect(editor.querySelector('#players')?.getAttribute('label')).toBe('Permitted Players');
     expect(editor.querySelector('ha-select')).toBeTruthy();
-    expect(editor.querySelectorAll('ha-list-item')).toHaveLength(4);
+    expect(editor.querySelectorAll('ha-list-item')).toHaveLength(2);
+    expect(editor.querySelector('#player-list')).toBeNull();
     expect(editor.querySelector('ha-switch')).toBeTruthy();
     expect(editor.querySelector('select')).toBeNull();
     expect((editor.querySelector('#player') as HTMLElement & { includeDomains?: string[] }).includeDomains).toEqual(['media_player']);
@@ -85,20 +87,19 @@ describe('MusicAssistantCardEditor', () => {
 
     expect((editor.querySelector('#player') as HTMLElement & { value?: string }).value).toBe('');
     expect((editor.querySelector('#action') as HTMLElement & { value?: string }).value).toBe('play');
-    expect((editor.querySelector('#player-list') as HTMLElement & { value?: string }).value).toBe('all');
   });
 
-  it('persists the selected player visibility mode', () => {
+  it('normalizes a single permitted player picker value to an array', () => {
     const editor = new MusicAssistantCardEditor();
     editor.setConfig({ type: 'custom:music-assistant-card', player: '' });
     const changes: CustomEvent[] = [];
     editor.addEventListener('config-changed', (event) => changes.push(event as CustomEvent));
 
-    const playerList = editor.querySelector('#player-list') as HTMLElement & { value?: string };
-    playerList.value = 'selected';
-    playerList.dispatchEvent(new Event('selected', { bubbles: true }));
+    const players = editor.querySelector('#players') as HTMLElement & { value?: string };
+    players.value = 'media_player.kitchen_2';
+    players.dispatchEvent(new Event('value-changed', { bubbles: true }));
 
     expect(changes).toHaveLength(1);
-    expect(changes[0].detail.config.player_list).toBe('selected');
+    expect(changes[0].detail.config.players).toEqual(['media_player.kitchen_2']);
   });
 });

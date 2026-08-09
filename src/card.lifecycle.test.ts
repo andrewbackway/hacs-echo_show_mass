@@ -15,9 +15,10 @@ describe('MusicAssistantCard lifecycle', () => {
     card.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room', show_queue: false });
     card.hass = hass(callWS);
     card.shadowRoot?.querySelector<HTMLElement>('[data-control="discover"]')?.click();
+    card.shadowRoot?.querySelector<HTMLElement>('[data-path-root]')?.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
-    calls[0]({ title: 'First', children: [] });
+    calls[0]({ title: 'First', children: [{ media_content_id: 'album://first', media_content_type: 'album', title: 'First album' }] });
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(card.shadowRoot?.textContent).toContain('First');
+    expect(card.shadowRoot?.textContent).toContain('First album');
   });
 });
