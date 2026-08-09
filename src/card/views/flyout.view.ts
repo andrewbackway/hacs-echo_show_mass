@@ -54,16 +54,17 @@ export interface ActiveFlyoutParams {
   queueState: QueueState;
   speakerState: SpeakerState;
   currentPlayerId?: string;
+  currentPlayer?: { attributes: Record<string, unknown> };
   volumePercent: number;
 }
 
 export function renderActiveFlyout(params: ActiveFlyoutParams): TemplateResult | typeof nothing {
-  const { activeFlyout, clearQueueConfirmOpen, queueState, speakerState, currentPlayerId, volumePercent } = params;
+  const { activeFlyout, clearQueueConfirmOpen, queueState, speakerState, currentPlayerId, currentPlayer, volumePercent } = params;
   if (!activeFlyout) return nothing;
   const title = activeFlyout === 'queue' ? 'Queue' : activeFlyout === 'speakers' ? 'Players' : 'Volume';
   const body =
     activeFlyout === 'queue'
-      ? renderQueue(queueState)
+      ? renderQueue(queueState, Number(currentPlayer?.attributes.media_duration))
       : activeFlyout === 'speakers'
         ? renderSpeakerSheet(speakerState, currentPlayerId)
         : renderVolumeFlyout(volumePercent);

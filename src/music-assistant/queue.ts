@@ -9,6 +9,7 @@ export interface QueueItem {
   album?: string;
   image_url?: string;
   image?: string;
+  duration?: number;
 }
 
 export interface QueueDetails {
@@ -49,6 +50,8 @@ interface MassQueueItem {
   media_artist?: unknown;
   media_content_id?: unknown;
   media_image?: unknown;
+  duration?: unknown;
+  media_duration?: unknown;
 }
 
 function normalizeQueueItem(item: MassQueueItem): QueueItem {
@@ -59,7 +62,13 @@ function normalizeQueueItem(item: MassQueueItem): QueueItem {
     artist: typeof item.media_artist === 'string' ? item.media_artist : undefined,
     uri: typeof item.media_content_id === 'string' ? item.media_content_id : undefined,
     image_url: typeof item.media_image === 'string' ? item.media_image : undefined,
+    duration: toDuration(item.duration ?? item.media_duration),
   };
+}
+
+function toDuration(value: unknown): number | undefined {
+  const duration = Number(value);
+  return Number.isFinite(duration) && duration > 0 ? duration : undefined;
 }
 
 export async function getCoreQueue(hass: HomeAssistant, player: string): Promise<QueueDetails> {

@@ -163,13 +163,16 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
     const previousHass = this.lastHass;
     const previousMediaContentId = this.getMediaContentId(previousHass?.states[this.config?.player ?? '']);
     const nextMediaContentId = this.getMediaContentId(hass.states[this.config?.player ?? '']);
+    const previousPlayState = previousHass?.states[this.config?.player ?? '']?.state;
+    const nextPlayState = hass.states[this.config?.player ?? '']?.state;
     const mediaContentChanged = previousHass !== undefined && previousMediaContentId !== nextMediaContentId;
+    const playStateChanged = previousHass !== undefined && previousPlayState !== nextPlayState;
     this.lastHass = hass;
     this._hass = hass;
     if (sessionChanged) this.invalidateRequests();
     if (this.hasRelevantHassChange(previousHass, hass)) this.render();
     this.syncProgressTimer();
-    if (this.config?.show_queue && (!this.queueRequested || mediaContentChanged)) {
+    if (this.config?.show_queue && (!this.queueRequested || mediaContentChanged || playStateChanged)) {
       this.queueRequested = true;
       void this.loadQueue();
     }
@@ -335,6 +338,7 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
           queueState: renderedQueueState,
           speakerState,
           currentPlayerId: this.config.player,
+          currentPlayer: player,
           volumePercent: Number(this._hass?.states[this.config.player]?.attributes.volume_level ?? 0) * 100,
         })}
         ${operationError ? html`<p class="state error" role="alert">${operationError}</p>` : nothing}

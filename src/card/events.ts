@@ -1,6 +1,6 @@
 import { flattenSearchResults } from '../music-assistant/search';
 import { toMediaItemFromSearch } from './dom';
-import { applySpeakerSelection, callService, handleControl, playMedia, runAction, runSpeakerAction } from './actions';
+import { applySpeakerSelection, handleControl, playMedia, playQueueItem, runAction, runSpeakerAction } from './actions';
 import type { ActionContext } from './actions';
 
 export const ROOT_MEDIA_ID = 'media-source://';
@@ -99,14 +99,8 @@ export function createClickHandler(context: ActionContext): (event: Event) => vo
     }
 
     if (target.dataset.queueIndex !== undefined) {
-      const index = Number(target.dataset.queueIndex);
       void runAction(context, async () => {
-        const items = context.getState().queueState.details?.items;
-        await callService(context, 'media_player', 'play_media', {
-          media_content_id: items?.[index]?.uri,
-          media_content_type: items?.[index]?.media_type,
-        });
-        await context.loadQueue();
+        await playQueueItem(context, target.dataset.queueIndex as string);
         const uiState = context.getState().uiState;
         context.setState({ uiState: { ...uiState, activeFlyout: null } });
       });

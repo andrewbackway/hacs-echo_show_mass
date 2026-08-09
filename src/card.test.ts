@@ -275,6 +275,33 @@ describe('MusicAssistantCard', () => {
     expect(card.shadowRoot?.textContent).toContain('Second song');
   });
 
+  it('refreshes the cached queue when the primary player state changes', async () => {
+    const queueResponses = [
+      { response: { 'media_player.living_room': [{ media_title: 'Paused song', media_content_id: 'track://same' }] } },
+      { response: { 'media_player.living_room': [{ media_title: 'Playing song', media_content_id: 'track://same' }] } },
+    ];
+    const callService = vi.fn().mockImplementation((_domain, service) =>
+      service === 'get_queue_items' ? Promise.resolve(queueResponses.shift()) : Promise.resolve({}),
+    );
+    const card = new MusicAssistantCard();
+    const firstHass = createHass(callService);
+    firstHass.states['media_player.living_room'].state = 'paused';
+    firstHass.states['media_player.living_room'].attributes.media_content_id = 'track://same';
+    card.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room' });
+    card.hass = firstHass;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const secondHass = createHass(callService);
+    secondHass.states['media_player.living_room'].state = 'playing';
+    secondHass.states['media_player.living_room'].attributes.media_content_id = 'track://same';
+    card.hass = secondHass;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(callService).toHaveBeenCalledTimes(2);
+    card.shadowRoot?.querySelector<HTMLElement>('[data-control="queue"]')?.click();
+    expect(card.shadowRoot?.textContent).toContain('Playing song');
+  });
+
   it('shows a queue refresh error in the queue flyout', async () => {
     const callService = vi.fn().mockImplementation((_domain, service) =>
       service === 'get_queue_items' ? Promise.reject(new Error('Queue unavailable')) : Promise.resolve({}),

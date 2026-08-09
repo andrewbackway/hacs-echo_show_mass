@@ -49,6 +49,13 @@ export async function playMedia(
   if (enqueue === 'add' || config.click_action === 'queue') await context.loadQueue();
 }
 
+export async function playQueueItem(context: ActionContext, queueItemId: string): Promise<void> {
+  const player = context.getConfig()?.player;
+  if (!player) throw new Error('The current Music Assistant player is unavailable.');
+  await callService(context, 'mass_queue', 'play_queue_item', { entity: player, queue_item_id: queueItemId }, {});
+  await context.loadQueue();
+}
+
 export async function runSpeakerAction(context: ActionContext, action: string, targetPlayerId: string): Promise<void> {
   if (action === 'transfer')
     await callService(context, 'media_player', 'transfer_playback', {}, { entity_id: targetPlayerId });
