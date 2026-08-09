@@ -22,12 +22,14 @@ export function renderMediaList(browseState: BrowseState, items: MediaItem[]): T
   if (browseState.loading) return html`<p class="state" aria-live="polite">Loading media sources...</p>`;
   if (browseState.error) return html`<p class="state error" role="alert">${browseState.error}</p>`;
   if (items.length === 0) return html`<p class="state">This location has no media items.</p>`;
-  return html`<div class="media-list">
-    ${repeat(
-      items,
-      (item) => item.media_content_id,
-      (item, index) => renderMediaItem(item, index),
-    )}
+  return html`<div class="media-list browse-results swiper" data-swiper="browse-results">
+    <div class="swiper-wrapper">
+      ${repeat(
+        items,
+        (item) => item.media_content_id,
+        (item, index) => html`<div class="swiper-slide">${renderMediaItem(item, index)}</div>`,
+      )}
+    </div>
   </div>`;
 }
 
@@ -61,12 +63,18 @@ export function renderPath(path: MediaItem[]): TemplateResult {
   const back = html`<button class="back-button" data-path-back type="button">
     <ha-icon icon="mdi:arrow-left" aria-hidden="true"></ha-icon><span>Back</span>
   </button>`;
-  return html`<div class="media-list">
-    ${root}${back}${path.map(
-      (item, index) =>
-        html`<button class="back-button" data-path-index="${index}" type="button">
-          <ha-icon icon="mdi:chevron-right" aria-hidden="true"></ha-icon><span>${item.title}</span>
-        </button>`,
-    )}
+  return html`<div class="media-list browse-path swiper" data-swiper="browse-path">
+    <div class="swiper-wrapper">
+      <div class="swiper-slide">${root}</div>
+      <div class="swiper-slide">${back}</div>
+      ${path.map(
+        (item, index) =>
+          html`<div class="swiper-slide">
+            <button class="back-button" data-path-index="${index}" type="button">
+              <ha-icon icon="mdi:chevron-right" aria-hidden="true"></ha-icon><span>${item.title}</span>
+            </button>
+          </div>`,
+      )}
+    </div>
   </div>`;
 }

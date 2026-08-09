@@ -24,17 +24,21 @@ const libraryCategories: Array<{ id: LibraryCategory; label: string; icon: strin
 ];
 
 export function renderLibraryNavigation(selectedCategory: LibraryCategory | null): TemplateResult {
-  return html`<nav class="library-navigation" aria-label="Music library categories">
-    ${libraryCategories.map(
-      (category) => html`<button
-        class="library-category${selectedCategory === category.id ? ' selected' : ''}"
-        data-control="library-category:${category.id}"
-        type="button"
-        aria-current=${selectedCategory === category.id ? 'page' : nothing}
-      >
-        <ha-icon icon="${category.icon}"></ha-icon><span>${category.label}</span>
-      </button>`,
-    )}
+  return html`<nav class="library-navigation swiper" data-swiper="library-navigation" data-swiper-responsive="horizontal" aria-label="Music library categories">
+    <div class="swiper-wrapper">
+      ${libraryCategories.map(
+        (category) => html`<div class="swiper-slide">
+          <button
+            class="library-category${selectedCategory === category.id ? ' selected' : ''}"
+            data-control="library-category:${category.id}"
+            type="button"
+            aria-current=${selectedCategory === category.id ? 'page' : nothing}
+          >
+            <ha-icon icon="${category.icon}"></ha-icon><span>${category.label}</span>
+          </button>
+        </div>`,
+      )}
+    </div>
   </nav>`;
 }
 
@@ -45,13 +49,21 @@ export function renderLibraryResults(libraryState: LibraryState): TemplateResult
   if (libraryState.error) return html`<p class="state error" role="alert">${libraryState.error}</p>`;
   if (libraryState.items.length === 0)
     return html`<p class="state">No ${libraryState.query ? `results for “${libraryState.query}”` : 'items'}.</p>`;
-  return html`<div class="media-list library-list">
-    ${repeat(libraryState.items, (item) => item.uri, (item) => renderLibraryItem(item, libraryState.selectedCategory!))}
-    ${libraryState.hasMore
-      ? html`<button class="control load-more" data-control="library-load-more" type="button" ?disabled=${libraryState.loadingMore}>
-          ${libraryState.loadingMore ? 'Loading...' : 'Load more'}
-        </button>`
-      : nothing}
+  return html`<div class="library-list swiper" data-swiper="library-results">
+    <div class="swiper-wrapper">
+      ${repeat(
+        libraryState.items,
+        (item) => item.uri,
+        (item) => html`<div class="swiper-slide">${renderLibraryItem(item, libraryState.selectedCategory!)}</div>`,
+      )}
+      ${libraryState.hasMore
+        ? html`<div class="swiper-slide">
+            <button class="control load-more" data-control="library-load-more" type="button" ?disabled=${libraryState.loadingMore}>
+              ${libraryState.loadingMore ? 'Loading...' : 'Load more'}
+            </button>
+          </div>`
+        : nothing}
+    </div>
   </div>`;
 }
 
@@ -83,17 +95,21 @@ export function renderSearchResults(searchState: SearchState): TemplateResult {
   const results = flattenSearchResults(searchState.response ?? {});
   if (results.length === 0) return html`<p class="state">No results for “${searchState.query}”.</p>`;
   const groups = [...new Set(results.map((item) => item.group))];
-  return html`${groups.map(
-    (group) =>
-      html`<section class="result-group">
-        <h3 class="result-heading">${group}</h3>
-        ${repeat(
-          results.filter((item) => item.group === group),
-          (item) => item.uri,
-          (item) => renderSearchItem(item),
-        )}
-      </section>`,
-  )}`;
+  return html`<div class="search-result-list swiper" data-swiper="search-results">
+    <div class="swiper-wrapper">
+      ${groups.map(
+        (group) =>
+          html`<section class="result-group swiper-slide">
+            <h3 class="result-heading">${group}</h3>
+            ${repeat(
+              results.filter((item) => item.group === group),
+              (item) => item.uri,
+              (item) => renderSearchItem(item),
+            )}
+          </section>`,
+      )}
+    </div>
+  </div>`;
 }
 
 export function renderSearchItem(item: SearchItem & { group: string }): TemplateResult {

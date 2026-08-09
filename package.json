@@ -23,6 +23,7 @@
     "vitest": "^4.1.10"
   },
   "dependencies": {
-    "lit-html": "^3.3.3"
+    "lit-html": "^3.3.3",
+    "swiper": "^14.1.0"
   }
 }

@@ -11,12 +11,16 @@ export function renderQueue(queueState: QueueState, currentDuration?: number): T
   if (items.length === 0) return html`<div class="queue"><p class="state">Queue is empty.</p></div>`;
   const currentIndex = queueState.details?.current_index ?? -1;
   return html`<div class="queue">
-    <div class="queue-list">
-      ${repeat(
-        items,
-        (item, index) => item.queue_item_id ?? `${item.uri ?? 'item'}:${index}`,
-        (item, index) => renderQueueItem(item, index === currentIndex, index === currentIndex ? currentDuration : undefined),
-      )}
+    <div class="queue-list swiper" data-swiper="queue">
+      <div class="swiper-wrapper">
+        ${repeat(
+          items,
+          (item, index) => item.queue_item_id ?? `${item.uri ?? 'item'}:${index}`,
+          (item, index) => html`<div class="swiper-slide">
+            ${renderQueueItem(item, index === currentIndex, index === currentIndex ? currentDuration : undefined)}
+          </div>`,
+        )}
+      </div>
     </div>
   </div>`;
 }

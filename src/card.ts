@@ -16,6 +16,7 @@ import { cardStyles } from './card/card.styles';
 import { getGroupMembers } from './card/dom';
 import { CardStore, createInitialState } from './card/card-store';
 import { RequestGuard } from './card/request-guard';
+import { CardSwiperManager } from './card/swiper';
 import { callService, runAction, type ActionContext } from './card/actions';
 import { createClickHandler } from './card/events';
 import { renderTopMenu } from './card/views/topmenu.view';
@@ -56,6 +57,7 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
   private readonly queueRequests = new RequestGuard();
   private readonly searchRequests = new RequestGuard();
   private readonly libraryRequests = new RequestGuard();
+  private readonly swiperManager = new CardSwiperManager();
   private progressTimer?: ReturnType<typeof setInterval>;
   private progressStartedAt = 0;
   private progressStartPosition = 0;
@@ -146,6 +148,7 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
     this.queueCache = undefined;
     this.clearSearchTimer();
     this.clearProgressTimer();
+    this.swiperManager.destroy();
     this.invalidateRequests();
   }
 
@@ -345,6 +348,7 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
       </section>`,
       this.container,
     );
+    this.swiperManager.mount(this.container);
   }
 
   private getSpeakerLabel(): string {
