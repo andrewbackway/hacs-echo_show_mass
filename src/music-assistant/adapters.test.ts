@@ -9,10 +9,10 @@ function createHass(callService = vi.fn(), callWS?: HomeAssistant['callWS']): Ho
 }
 
 describe('Home Assistant Music Assistant adapters', () => {
-  it('browses the Music Assistant media source by default', async () => {
+  it('browses Home Assistant media sources by default', async () => {
     const callWS = vi.fn().mockResolvedValue({ title: 'Music Assistant', children: [] });
     await expect(browseMedia(createHass(undefined, callWS))).resolves.toMatchObject({ title: 'Music Assistant' });
-    expect(callWS).toHaveBeenCalledWith({ type: 'media_source/browse_media', media_content_id: 'media-source://music_assistant' });
+    expect(callWS).toHaveBeenCalledWith({ type: 'media_source/browse_media', media_content_id: 'media-source://' });
   });
 
   it('preserves artwork from media-source responses', async () => {

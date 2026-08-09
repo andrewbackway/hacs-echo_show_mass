@@ -12,7 +12,7 @@ import { type MediaBrowseResponse, type MediaItem } from './music-assistant/medi
 import './editor';
 
 const CARD_TAG = 'music-assistant-card';
-const ROOT_MEDIA_ID = 'media-source://music_assistant';
+const ROOT_MEDIA_ID = 'media-source://';
 
 const cardStyles = `
   :host { --music-bg: var(--card-background-color, #101416); --music-surface: #171d20; --music-raised: #20282b; --music-line: #2d383b; --music-text: var(--primary-text-color, #f2f6f5); --music-muted: var(--secondary-text-color, #9ba9aa); --music-accent: var(--primary-color, #65d6c7); display: block; color: var(--music-text); font-family: var(--paper-font-body1_-_font-family, 'Segoe UI', sans-serif); }
@@ -468,7 +468,7 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
   }
 
   private renderPath(): string {
-    const root = '<button class="back-button" data-path-root type="button"><ha-icon icon="mdi:home-outline" aria-hidden="true"></ha-icon><span>Music Assistant</span></button>';
+    const root = '<button class="back-button" data-path-root type="button"><ha-icon icon="mdi:home-outline" aria-hidden="true"></ha-icon><span>Media sources</span></button>';
     if (this.browseState.path.length === 0) return `${root}<p class="panel-copy">Choose a source to begin browsing.</p>`;
     const back = '<button class="back-button" data-path-back type="button"><ha-icon icon="mdi:arrow-left" aria-hidden="true"></ha-icon><span>Back</span></button>';
     return `<div class="media-list">${root}${back}${this.browseState.path.map((item, index) => `<button class="back-button" data-path-index="${index}" type="button"><ha-icon icon="mdi:chevron-right" aria-hidden="true"></ha-icon><span>${escapeHtml(item.title)}</span></button>`).join('')}</div>`;
