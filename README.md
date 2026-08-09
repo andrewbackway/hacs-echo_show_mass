@@ -86,7 +86,7 @@ npm run build
 Then update the version in `package.json`, run the checks above, and publish the commit and release. Replace `x.x.x` with the next semantic version:
 
 ```powershell
-$version = "0.4.4"
+$version = "0.5.2"
 
 git add package.json src music-assistant-card.js dist/music-assistant-card.js
 git commit -m "Release Music Assistant card v$version"
