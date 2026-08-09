@@ -60,6 +60,40 @@ describe('MusicAssistantCard', () => {
     expect(card.shadowRoot?.querySelector('.thumb img')?.getAttribute('src')).toBe('/local/album.jpg');
   });
 
+  it('returns to now playing after playing a browsed item', async () => {
+    const callService = vi.fn().mockResolvedValue({});
+    const callWS = vi.fn().mockResolvedValue({
+      title: 'Music Assistant',
+      children: [
+        {
+          media_content_id: 'track://1',
+          media_content_type: 'track',
+          title: 'Track',
+          can_play: true,
+        },
+      ],
+    });
+    const card = new MusicAssistantCard();
+    card.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room', show_queue: false });
+    card.hass = { ...createHass(callService), callWS };
+    card.shadowRoot?.querySelector<HTMLElement>('[data-control="discover"]')?.click();
+    card.shadowRoot?.querySelector<HTMLElement>('[data-path-root]')?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    card.shadowRoot?.querySelector<HTMLElement>('[data-item-action="play"]')?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(card.shadowRoot?.querySelector('[data-primary-view="now-playing"]')).toBeTruthy();
+    expect(callService).toHaveBeenCalledWith(
+      'music_assistant',
+      'play_media',
+      { media_id: 'track://1', media_type: 'track', enqueue: 'replace' },
+      { entity_id: 'media_player.living_room' },
+      true,
+      false,
+    );
+  });
+
   it('opens search without requiring the media browser', () => {
     const callWS = vi.fn();
     const card = new MusicAssistantCard();
