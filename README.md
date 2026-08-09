@@ -4,7 +4,7 @@ A custom Lovelace card for Home Assistant that lets you browse Music Assistant m
 
 ## Current status
 
-The card connects through the installed Music Assistant add-on's Home Assistant ingress, then provides native provider browsing, expandable containers, artwork fallbacks, loading and error states, debounced global search with grouped results, explicit play or queue actions, current-track metadata, playback controls, speaker transfer/grouping, progress and volume sliders, queue viewing, favorites, editable playlist actions, and playlist shuffle. Queue removal and reordering are not currently exposed because the native Music Assistant API does not provide those operations in the verified contract.
+The card uses Home Assistant's authenticated frontend APIs for Music Assistant media-source browsing, search, queue retrieval, playback, and media-player controls. It provides expandable browsing, artwork, grouped search results, explicit play or queue actions, current-track metadata, speaker visibility and grouping, progress and volume controls, and queue viewing. Playlist and favorites actions are intentionally deferred, as is queue-index playback.
 
 ## Build
 
@@ -56,7 +56,7 @@ gh --version
 Then update the version in `package.json`, run the checks above, and publish the commit and release. Replace `0.1.4` with the next semantic version:
 
 ```powershell
-$version = "0.1.13"
+$version = "0.2.1"
 
 git add package.json src music-assistant-card.js dist/music-assistant-card.js
 git commit -m "Release Music Assistant card v$version"
@@ -101,14 +101,13 @@ layout: two-column
 show_search: true
 show_queue: true
 click_action: play
-ingress_path: /d5369777_music_assistant
 ```
 
-The `player` value must be the Music Assistant `media_player` entity or a supported synchronized group. `ingress_path` defaults to `/d5369777_music_assistant`; leave it blank to discover the installed add-on through Home Assistant instead. The card keeps the active ingress route in runtime memory only. No server URL, ingress token, or Music Assistant credential is required in YAML. The visual editor allows an incomplete new-card configuration while it is being filled in.
+The `player` value must be a Music Assistant `media_player` entity or synchronized group exposed by Home Assistant. Optionally provide `players` as a YAML list to limit the permitted player picker; leave it blank or omit it to permit all players. The primary `player` is always included. No server URL, ingress token, or Music Assistant credential is required in YAML. The visual editor allows an incomplete new-card configuration while it is being filled in.
 
 ## Known limitations
 
-The native Music Assistant API exposes queue retrieval, clearing, playback, enqueue behavior, favorites, playlists, and speaker controls, but not generic queue-item removal or reordering. Favorite removal is enabled only when Music Assistant supplies a reliable library item identity; the card never guesses identifiers from playback URIs.
+Playlist listing/mutation, favorites, and queue-index playback are currently deferred. Grouping is available only when Home Assistant reports the required media-player capability.
 
 ## Home Assistant configuration
 
@@ -121,7 +120,9 @@ layout: two-column
 show_search: true
 show_queue: true
 click_action: play
-ingress_path: /d5369777_music_assistant
+players:
+  - media_player.living_room
+  - media_player.kitchen
 ```
 
-The `player` value is required and may refer to a Music Assistant player or a supported synchronized group exposed by Home Assistant. Music Assistant must be installed as a Home Assistant add-on with ingress enabled. Set `ingress_path` to a valid same-origin Home Assistant path, or leave it blank to use automatic discovery. All API calls use the authenticated dashboard session.
+The `player` value is required and may refer to a Music Assistant player or synchronized group exposed by Home Assistant. The card uses the authenticated dashboard session and does not require Music Assistant add-on ingress or administrator permissions.
