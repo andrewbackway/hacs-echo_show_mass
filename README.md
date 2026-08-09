@@ -84,7 +84,7 @@ gh --version
 Then update the version in `package.json`, run the checks above, and publish the commit and release. Replace `0.1.4` with the next semantic version:
 
 ```powershell
-$version = "0.3.0
+$version = "0.3.2"
 
 git add package.json src music-assistant-card.js dist/music-assistant-card.js
 git commit -m "Release Music Assistant card v$version"

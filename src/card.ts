@@ -56,6 +56,7 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
   private progressStartPosition = 0;
   private needsReconnectLoad = false;
   private eventsBound = false;
+  private lastHass?: HomeAssistant;
   private sessionIdentity?: { callWS?: HomeAssistant['callWS']; callService: HomeAssistant['callService'] };
   private readonly actionContext: ActionContext = {
     getHass: () => this._hass,
@@ -145,14 +146,33 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
       this.sessionIdentity !== undefined &&
       (this.sessionIdentity.callWS !== hass.callWS || this.sessionIdentity.callService !== hass.callService);
     this.sessionIdentity = { callWS: hass.callWS, callService: hass.callService };
+    const previousHass = this.lastHass;
+    this.lastHass = hass;
     this._hass = hass;
     if (sessionChanged) this.invalidateRequests();
-    this.render();
+    if (this.hasRelevantHassChange(previousHass, hass)) this.render();
     this.syncProgressTimer();
     if (this.config?.show_queue && !this.queueRequested) {
       this.queueRequested = true;
       void this.loadQueue();
     }
+  }
+
+  /**
+   * Home Assistant assigns `hass` on every global state change. Only re-render when an entity the
+   * card actually reads changed reference (HA swaps the state object on change, reuses it otherwise).
+   */
+  private hasRelevantHassChange(previous: HomeAssistant | undefined, next: HomeAssistant): boolean {
+    if (!previous || !this.config) return true;
+    const relevantIds = new Set<string>([this.config.player, ...(this.config.players ?? [])]);
+    const nextPlayer = next.states[this.config.player];
+    if (nextPlayer) for (const member of getGroupMembers(nextPlayer)) relevantIds.add(member);
+    const previousPlayer = previous.states[this.config.player];
+    if (previousPlayer) for (const member of getGroupMembers(previousPlayer)) relevantIds.add(member);
+    for (const id of relevantIds) {
+      if (previous.states[id] !== next.states[id]) return true;
+    }
+    return false;
   }
 
   getCardSize(): number {
