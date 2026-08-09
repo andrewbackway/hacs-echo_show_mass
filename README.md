@@ -10,13 +10,41 @@ The card uses Home Assistant's authenticated frontend APIs for Music Assistant m
 
 ```sh
 npm run check
+npm run lint
 npm test
 npm run build
 ```
 
+`npm run format` applies Prettier to source/config files; `npm run format:check` verifies formatting without writing.
+
 The distributable file is written to the repository root as `music-assistant-card.js` for HACS. The same build also writes the preview bundle to `dist/`.
 
 The card must be validated in a real Home Assistant Lovelace dashboard because its editor depends on Home Assistant frontend components and its data path depends on Home Assistant authentication.
+
+## Project structure
+
+```
+src/
+  main.ts               # Entry point
+  card.ts                # MusicAssistantCard element: lifecycle, data loading, orchestration
+  editor.ts               # Lovelace card config editor element
+  home-assistant.ts       # Shared HA/card types
+  card/
+    card.styles.ts        # Card CSS
+    card.types.ts         # Shared state-slice types
+    card-store.ts          # Minimal state store (getState/setState -> single render)
+    request-guard.ts       # Stale-async-response guard used by data loaders
+    dom.ts                 # formatDuration/getGroupMembers/toMediaItemFromSearch helpers
+    actions.ts              # HA service calls & business logic (playMedia, speaker/queue actions, handleControl)
+    events.ts               # Delegated click-event routing
+    views/                  # lit-html templates (topmenu, now-playing, search, media-list, queue, speakers, flyout)
+  music-assistant/
+    media-browser.ts        # media_source/browse_media adapter
+    search.ts                # music_assistant.search adapter
+    queue.ts                 # music_assistant.get_queue adapter
+```
+
+Rendering uses [`lit-html`](https://lit.dev/docs/libraries/standalone-templates/) (not full `lit`/`LitElement`) for templating and DOM diffing; `MusicAssistantCard` remains a plain `HTMLElement` custom element.
 
 ## GitHub and HACS deployment
 
@@ -56,7 +84,7 @@ gh --version
 Then update the version in `package.json`, run the checks above, and publish the commit and release. Replace `0.1.4` with the next semantic version:
 
 ```powershell
-$version = "0.2.1"
+$version = "0.3.0
 
 git add package.json src music-assistant-card.js dist/music-assistant-card.js
 git commit -m "Release Music Assistant card v$version"

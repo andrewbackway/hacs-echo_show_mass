@@ -4,16 +4,20 @@
 
 **Phases 1-6 partially implemented.** The shell/state foundation, Now Playing playback layout, Queue flyout, speaker selection, playlist success behavior, and Search/Browse navigation are in the repository. Final flyout and live visual refinements remain pending.
 
+> **Note (post API-stack migration & architecture refactor):** the "Technical Handoff Specification" section below predates both the HA-only API migration (see `API_STACK_MIGRATION_PLAN.md`) and the `src/card/*` module split (see `ARCHITECTURE_REFACTOR_PLAN.md`). References to Music Assistant ingress, `MusicAssistantTransport`, and `src/music-assistant/api.ts` describe an architecture that was not carried forward — the card now calls Music Assistant exclusively through `hass.callService`/`hass.callWS`, and rendering/actions/events live under `src/card/` rather than a single `src/card.ts` monolith. Treat file paths in that section as historical context, not current locations.
+
 ## Pending Approval: Layout Refinement Plan
 
 **No application code changes are authorized by this section until explicit approval.** This plan covers the next deployed-review findings and the requested Now Playing reflow.
 
 ### Scope and ownership
 
+> Paths below are updated to reflect the post-refactor `src/card/*` module split; the render functions are now pure functions, not `MusicAssistantCard` methods.
+
 | File | Planned change | Reason |
 | --- | --- | --- |
-| `src/card.ts` | Update `cardStyles`, `renderTopMenu`, `renderNowPlaying`, `renderSpeakerSheet`, `renderQueue`, and `renderQueueItem`. | These render the affected surfaces and own their layout. |
-| `src/music-assistant/api.ts` | Extend `MusicAssistantQueueItem` only if live queue responses expose a duration field. | Duration must be displayed from a verified native payload, never inferred from queue position. |
+| `src/card/card.styles.ts`, `src/card/views/topmenu.view.ts`, `src/card/views/now-playing.view.ts`, `src/card/views/speakers.view.ts`, `src/card/views/queue.view.ts` | Update `cardStyles`, `renderTopMenu`, `renderNowPlaying`, `renderSpeakerSheet`, `renderQueue`, and `renderQueueItem`. | These render the affected surfaces and own their layout. |
+| `src/music-assistant/queue.ts` | Extend `QueueDetails`/`QueueItem` only if live queue responses expose a duration field (there is no separate `api.ts` adapter layer; adapters live directly under `src/music-assistant/`). | Duration must be displayed from a verified native payload, never inferred from queue position. |
 | `src/music-assistant/queue.ts` | Normalize the verified queue duration field into `QueueItem` if it differs from the ingress type. | Keeps the queue display model typed. |
 | `src/card.test.ts` | Add DOM/action assertions for each changed layout contract. | Prevents duplicate headers, duplicated close controls, and rearranged controls from regressing. |
 | `UI_REDESIGN_PLAN.md` | Mark this section implemented only after live review at the reference viewport. | Keeps the approval and verification record accurate. |

@@ -1,0 +1,11 @@
+dist/
+node_modules/
+public/
+music-assistant-card.js
+package-lock.json
+
+# Only source/config code is auto-formatted; docs and generated/config data are left as-is.
+*.md
+*.json
+*.yml
+*.yaml
