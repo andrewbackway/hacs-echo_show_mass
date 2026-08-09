@@ -56,6 +56,7 @@ describe('MusicAssistantCard', () => {
     card.shadowRoot?.querySelector<HTMLElement>('[data-path-root]')?.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(callWS).toHaveBeenCalledWith({ type: 'media_source/browse_media', media_content_id: 'media-source://' });
+    expect(card.shadowRoot?.querySelector('[data-swiper="browse-results"] .swiper-wrapper')).toBeTruthy();
     expect(card.shadowRoot?.querySelector('.media-title')?.textContent).toBe('Album');
     expect(card.shadowRoot?.querySelector('.thumb img')?.getAttribute('src')).toBe('/local/album.jpg');
   });
