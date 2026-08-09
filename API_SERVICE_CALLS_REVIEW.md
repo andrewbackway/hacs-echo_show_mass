@@ -1,21 +1,46 @@
 # API & Service Call Review — Music Assistant Card
 
 Review of every Home Assistant API / service (action) call the card makes, with issues found and
-proposed improvements. **No code changes have been made.** Nothing here is implemented until this
-plan is approved.
+proposed improvements. The complete queue migration described below is implemented; the remaining
+items are follow-up recommendations.
 
 Scope reviewed:
 
 - [src/card/actions.ts](src/card/actions.ts) — `callService`, playback/speaker/control actions
 - [src/card/events.ts](src/card/events.ts) — click routing to service calls (queue-index play, seek, volume)
 - [src/music-assistant/search.ts](src/music-assistant/search.ts) — `music_assistant.search`
-- [src/music-assistant/queue.ts](src/music-assistant/queue.ts) — `music_assistant.get_queue`
+- [src/music-assistant/queue.ts](src/music-assistant/queue.ts) — `mass_queue.get_queue_items` and core `music_assistant.get_queue`
 - [src/music-assistant/media-browser.ts](src/music-assistant/media-browser.ts) — `media_source/browse_media`
 - [src/card.ts](src/card.ts) — load orchestration and request lifecycle
 
 Service contracts below were verified against the current Home Assistant Music Assistant docs
-(2026.8) for `music_assistant.search`, `music_assistant.play_media`, `music_assistant.get_queue`,
-and `music_assistant.transfer_queue`.
+(2026.8) and `droans/mass_queue` release 0.10.3 for `music_assistant.search`,
+`music_assistant.play_media`, `music_assistant.get_queue`, `music_assistant.transfer_queue`, and
+`mass_queue.get_queue_items`.
+
+## Implemented Queue Migration
+
+The card now uses `mass_queue.get_queue_items` as its queue source. The response-only service
+returns the complete queue keyed by player entity ID. The card requests
+`{ entity: player, offset: 0, limit: 1000 }`, then maps the documented fields:
+
+| mass_queue field | Card field |
+| --- | --- |
+| `queue_item_id` | `queue_item_id` |
+| `media_title` | `name` |
+| `media_album_name` | `album` |
+| `media_artist` | `artist` |
+| `media_content_id` | `uri` |
+| `media_image` | `image_url` |
+
+The built-in `music_assistant.get_queue` action remains isolated as `getCoreQueue` for comparison
+and compatibility tests, but it is not sufficient for the full queue because its documented
+response focuses on `current_item` and `next_item`. The `mass_queue` integration must be installed
+and configured for the card's complete queue view to work.
+
+The card derives the highlighted current row by matching the primary player's
+`media_content_id` to the returned queue item URI. This compensates for `get_queue_items` not
+returning a `current_index` field.
 
 ---
 
@@ -25,7 +50,7 @@ and `music_assistant.transfer_queue`.
 | --- | --- | --- |
 | Browse media | `callWS({ type: 'media_source/browse_media', media_content_id })` | media-browser.ts |
 | Search | `music_assistant.search` `{ name, limit: 12 }` (no target) | search.ts |
-| Get queue | `music_assistant.get_queue` (target entity, `returnResponse`) | queue.ts |
+| Get queue | `mass_queue.get_queue_items` (`entity`, `offset: 0`, `limit: 1000`, `returnResponse`) | queue.ts |
 | Play media | `music_assistant.play_media` `{ media_id, media_type, enqueue }` | actions.ts `playMedia` |
 | Play queue item | `media_player.play_media` `{ media_content_id: uri, media_content_type }` | events.ts |
 | Play / pause | `media_player.media_play` / `media_pause` | actions.ts `handleControl` |
@@ -285,7 +310,27 @@ frontend clients (no direct `fetch`, no Supervisor/ingress paths). Notes:
 
 ---
 
-## Proposed change set (once approved)
+## Mass_queue Follow-up Opportunities
+
+The new complete queue response unlocks improvements that were not possible with the core summary
+action:
+
+1. Use `queue_item_id` with `mass_queue.play_queue_item` so clicking a row plays the existing queue
+  item instead of submitting its URI again through `media_player.play_media`.
+2. Add remove and reorder controls using `mass_queue.remove_queue_item`,
+  `mass_queue.move_queue_item_up`, `mass_queue.move_queue_item_down`, and
+  `mass_queue.move_queue_item_next`.
+3. Use `media_image` for queue-row artwork and support `local_image_encoded` if the optional
+  `download_local` setting is enabled for local providers.
+4. If queues can exceed 1000 items, add offset pagination or a configurable queue limit rather than
+  silently truncating the response.
+5. Use `mass_queue/get_info` only for optional capability and configuration diagnostics; do not make
+  the card depend on its native Music Assistant player IDs because the card's public API is entity-based.
+
+The highest-value preexisting API improvements remain transfer queue, search configuration entry
+validation, media-type sanitization, input clamping, and the Music Assistant media-source root.
+
+## Proposed change set
 
 1. **C2 – Fix transfer** (highest value, lowest risk): swap `media_player.transfer_playback` for
    `music_assistant.transfer_queue` with `source_player` + target = destination. Update
