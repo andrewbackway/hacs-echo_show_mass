@@ -21,13 +21,37 @@ The distributable file is written to the repository root as `music-assistant-car
 
 The card must be validated in a real Home Assistant Lovelace dashboard because its editor depends on Home Assistant frontend components and its data path depends on Home Assistant authentication. Complete queue display also requires the `mass_queue` custom integration, version 0.10.3 or newer.
 
+## Card YAML
+
+The visual editor uses Home Assistant's built-in card form and writes the same top-level configuration shown below. The minimal configuration is:
+
+```yaml
+type: custom:music-assistant-card
+player: media_player.living_room
+```
+
+Optional settings:
+
+```yaml
+type: custom:music-assistant-card
+player: media_player.living_room
+music_assistant_config_entry_id: 0123456789abcdef0123456789abcdef
+players:
+  - media_player.living_room
+  - media_player.kitchen
+click_action: play
+```
+
+`click_action` is either `play` (the default) or `queue`. `players` is an optional allow-list and is always a YAML sequence. `music_assistant_config_entry_id` is required for Music Assistant library, Favorites, and global search requests; without it, the card can still control the configured player.
+
+The editor no longer offers `layout`, `show_search`, `show_queue`, or `search_categories`. Existing YAML containing those legacy options continues to load while they are ignored by the editor's active schema.
+
 ## Project structure
 
 ```
 src/
   main.ts               # Entry point
   card.ts                # MusicAssistantCard element: lifecycle, data loading, orchestration
-  editor.ts               # Lovelace card config editor element
   home-assistant.ts       # Shared HA/card types
   card/
     card.styles.ts        # Card CSS
@@ -86,7 +110,7 @@ npm run build
 Then update the version in `package.json`, run the checks above, and publish the commit and release. Replace `x.x.x` with the next semantic version:
 
 ```powershell
-$version = "0.5.7"
+$version = "1.0.1"
 
 git add package.json src music-assistant-card.js dist/music-assistant-card.js
 git commit -m "Release Music Assistant card v$version"
