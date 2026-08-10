@@ -1,5 +1,3 @@
-import { flattenSearchResults } from '../music-assistant/search';
-import { toMediaItemFromSearch } from './dom';
 import { applySpeakerSelection, handleControl, playMedia, playQueueItem, runAction, runSpeakerAction } from './actions';
 import type { ActionContext } from './actions';
 
@@ -74,18 +72,9 @@ export function createClickHandler(context: ActionContext): (event: Event) => vo
     }
 
     if (target.dataset.searchUri) {
-      const { browseState, searchState } = context.getState();
-      if (target.dataset.searchExpand === 'true') {
-        const searchItem = flattenSearchResults(searchState.response ?? {}).find(
-          (item) => item.uri === target.dataset.searchUri,
-        );
-        if (searchItem)
-          void context.loadMedia(target.dataset.searchUri, [...browseState.path, toMediaItemFromSearch(searchItem)]);
-      } else {
-        void runAction(context, () =>
-          playMedia(context, target.dataset.searchUri as string, target.dataset.searchType ?? 'music'),
-        );
-      }
+      void runAction(context, () =>
+        playMedia(context, target.dataset.searchUri as string, target.dataset.searchType ?? 'music'),
+      );
       return;
     }
 

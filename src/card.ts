@@ -23,23 +23,90 @@ import { renderTopMenu } from './card/views/topmenu.view';
 import { renderNowPlaying } from './card/views/now-playing.view';
 import { libraryCategories, renderLibraryNavigation, renderLibraryResults, renderSearchInput, renderSearchResults } from './card/views/search.view';
 import { renderActiveFlyout } from './card/views/flyout.view';
-import './editor';
 
 const CARD_TAG = 'music-assistant-card';
 
 export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
-  static getConfigElement(): HTMLElement {
-    return document.createElement('music-assistant-card-editor');
+  static getConfigForm() {
+    return {
+      schema: [
+        {
+          name: 'player',
+          required: true,
+          selector: { entity: { domain: 'media_player' } },
+        },
+        {
+          name: 'click_action',
+          selector: {
+            select: {
+              options: [
+                { value: 'play', label: 'Play now' },
+                { value: 'queue', label: 'Add to queue' },
+              ],
+            },
+          },
+        },
+        {
+          name: 'players',
+          selector: { entity: { domain: 'media_player', multiple: true } },
+        },
+        {
+          type: 'expandable',
+          name: 'advanced',
+          flatten: true,
+          title: 'Advanced',
+          schema: [
+            {
+              name: 'music_assistant_config_entry_id',
+              selector: { text: {} },
+            },
+          ],
+        },
+      ],
+      computeLabel: (schema: { name?: string }) => {
+        switch (schema.name) {
+          case 'player':
+            return 'Primary player';
+          case 'click_action':
+            return 'When a media item is selected';
+          case 'players':
+            return 'Permitted players';
+          case 'music_assistant_config_entry_id':
+            return 'Music Assistant config entry ID';
+          default:
+            return undefined;
+        }
+      },
+      computeHelper: (schema: { name?: string }) => {
+        switch (schema.name) {
+          case 'player':
+            return 'Choose the primary Music Assistant player or synchronized group.';
+          case 'players':
+            return 'Optional allow-list. The primary player is always included.';
+          case 'music_assistant_config_entry_id':
+            return 'Needed for Favorites and category library loading.';
+          default:
+            return undefined;
+        }
+      },
+      assertConfig: (config: Record<string, unknown>) => {
+        if (typeof config.player !== 'string' || !config.player.trim()) {
+          throw new Error('A primary player is required.');
+        }
+        if (config.players !== undefined && (!Array.isArray(config.players) || config.players.some((player) => typeof player !== 'string'))) {
+          throw new Error('Permitted players must be media player entities.');
+        }
+        if (config.click_action !== undefined && !['play', 'queue'].includes(String(config.click_action))) {
+          throw new Error('The media selection action must be Play now or Add to queue.');
+        }
+      },
+    };
   }
 
   static getStubConfig(): MusicAssistantCardConfig {
     return {
       type: 'custom:music-assistant-card',
       player: '',
-      music_assistant_config_entry_id: '',
-      show_search: true,
-      show_queue: true,
-      click_action: 'play',
     };
   }
 
@@ -368,10 +435,14 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
     const configured = this.config?.search_categories;
     const available = libraryCategories.map((category) => category.id);
     if (!Array.isArray(configured) || configured.length === 0) return available;
-    const visible = configured.filter((category): category is import('./card/card.types').LibraryCategory =>
-      available.includes(category as import('./card/card.types').LibraryCategory),
+    const visible = [...new Set(configured)].filter(
+      (category): category is import('./card/card.types').LibraryCategory =>
+        available.includes(category as import('./card/card.types').LibraryCategory),
     );
-    return visible.length > 0 ? visible : available;
+    if (visible.length === 0) return available;
+    const favoritesIndex = visible.indexOf('favorites');
+    if (favoritesIndex <= 0) return visible;
+    return ['favorites', ...visible.filter((category) => category !== 'favorites')];
   }
 
   private ensureSelectedCategoryVisible(): void {
@@ -387,10 +458,21 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
       return;
     }
     const normalizedQuery = query.trim();
+    const configEntryId = this.config?.music_assistant_config_entry_id?.trim();
+    if (!configEntryId) {
+      this.store.setState({
+        searchState: {
+          query: normalizedQuery,
+          loading: false,
+          error: 'Add the Music Assistant config entry ID to search all music.',
+        },
+      });
+      return;
+    }
     const request = this.searchRequests.begin();
     this.store.setState({ searchState: { query: normalizedQuery, loading: true } });
     try {
-      const response = await searchMusicAssistant(this._hass, normalizedQuery);
+      const response = await searchMusicAssistant(this._hass, normalizedQuery, configEntryId);
       if (!request.isCurrent() || this.store.getState().searchState.query !== normalizedQuery) return;
       this.store.setState({ searchState: { query: normalizedQuery, loading: false, response } });
     } catch (error) {

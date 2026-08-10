@@ -28,11 +28,36 @@ describe('MusicAssistantCard', () => {
     expect(MusicAssistantCard.getStubConfig()).toEqual({
       type: 'custom:music-assistant-card',
       player: '',
-      music_assistant_config_entry_id: '',
-      show_search: true,
-      show_queue: true,
-      click_action: 'play',
     });
+  });
+
+  it('defines the YAML-first built-in form without retired layout controls', () => {
+    const form = MusicAssistantCard.getConfigForm();
+    const fieldNames = form.schema.flatMap((field) =>
+      'schema' in field && field.schema ? field.schema.map((child) => child.name) : [field.name],
+    );
+
+    expect(fieldNames).toEqual(['player', 'click_action', 'players', 'music_assistant_config_entry_id']);
+    expect(fieldNames).not.toEqual(expect.arrayContaining(['layout', 'show_search', 'show_queue', 'search_categories']));
+    expect(form.schema[0]).toMatchObject({ name: 'player', required: true });
+    expect(form.schema[3]).toMatchObject({ name: 'advanced', flatten: true });
+  });
+
+  it('keeps configured library order while promoting favorites to the top', () => {
+    const card = new MusicAssistantCard();
+    card.setConfig({
+      type: 'custom:music-assistant-card',
+      player: 'media_player.living_room',
+      search_categories: ['track', 'favorites', 'album'],
+    });
+    card.hass = createHass();
+    card.shadowRoot?.querySelector<HTMLElement>('[data-control="discover"]')?.click();
+
+    expect([...card.shadowRoot!.querySelectorAll<HTMLElement>('.library-category span')].map((item) => item.textContent)).toEqual([
+      'Favorites',
+      'Tracks',
+      'Albums',
+    ]);
   });
 
   it('opens the category library without browsing media sources', async () => {
@@ -71,7 +96,7 @@ describe('MusicAssistantCard', () => {
     );
   });
 
-  it('shows favorite state for the current media and refreshes it with the media id', () => {
+  it('hides the favorite control while favorite playback actions remain disabled in the UI', () => {
     const card = new MusicAssistantCard();
     const hass = createHass();
     hass.states['media_player.living_room'].attributes = {
@@ -81,16 +106,7 @@ describe('MusicAssistantCard', () => {
     };
     card.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room', show_queue: false });
     card.hass = hass;
-    expect(card.shadowRoot?.querySelector('[data-control="favorite"]')?.getAttribute('aria-pressed')).toBe('true');
-
-    const nextHass = createHass();
-    nextHass.states['media_player.living_room'].attributes = {
-      friendly_name: 'Living Room',
-      media_content_id: 'track://second',
-      media_favorite: false,
-    };
-    card.hass = nextHass;
-    expect(card.shadowRoot?.querySelector('[data-control="favorite"]')?.getAttribute('aria-pressed')).toBe('false');
+    expect(card.shadowRoot?.querySelector('[data-control="favorite"]')).toBeNull();
   });
 
   it('opens search without requiring the media browser', () => {

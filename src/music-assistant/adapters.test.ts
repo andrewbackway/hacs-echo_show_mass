@@ -26,15 +26,15 @@ describe('Home Assistant Music Assistant adapters', () => {
     await expect(browseMedia(createHass(undefined, vi.fn().mockResolvedValue(response)))).resolves.toEqual(response);
   });
 
-  it('sends the HA search action without a config entry', async () => {
+  it('sends the HA search action with the Music Assistant config entry', async () => {
     const callService = vi.fn().mockResolvedValue({ response: { tracks: [{ name: 'Song', uri: 'track://1' }] } });
-    await expect(searchMusicAssistant(createHass(callService), 'song')).resolves.toEqual({
+    await expect(searchMusicAssistant(createHass(callService), 'song', 'entry-1')).resolves.toEqual({
       tracks: [{ name: 'Song', uri: 'track://1' }],
     });
     expect(callService).toHaveBeenCalledWith(
       'music_assistant',
       'search',
-      { name: 'song', limit: 12 },
+      { config_entry_id: 'entry-1', name: 'song', limit: 12 },
       undefined,
       true,
       true,

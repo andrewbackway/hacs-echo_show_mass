@@ -15,8 +15,8 @@ export function renderSearchInput(query: string): TemplateResult {
 }
 
 export const libraryCategories: Array<{ id: LibraryCategory; label: string; icon: string }> = [
-  { id: 'recently_played', label: 'Recently played', icon: 'mdi:history' },
   { id: 'favorites', label: 'Favorites', icon: 'mdi:star' },
+  { id: 'recently_played', label: 'Recently played', icon: 'mdi:history' },
   { id: 'artist', label: 'Artists', icon: 'mdi:account-music' },
   { id: 'album', label: 'Albums', icon: 'mdi:album' },
   { id: 'track', label: 'Tracks', icon: 'mdi:music-note' },
@@ -31,7 +31,9 @@ export function renderLibraryNavigation(
 ): TemplateResult {
   return html`<nav class="library-navigation swiper" data-swiper="library-navigation" data-swiper-responsive="horizontal" aria-label="Music library categories">
     <div class="swiper-wrapper">
-      ${libraryCategories.filter((category) => visibleCategories.includes(category.id)).map(
+      ${visibleCategories.map((categoryId) => libraryCategories.find((category) => category.id === categoryId)).filter(
+        (category): category is (typeof libraryCategories)[number] => category !== undefined,
+      ).map(
         (category) => html`<div class="swiper-slide">
           <button
             class="library-category${selectedCategory === category.id ? ' selected' : ''}"
@@ -123,22 +125,29 @@ export function renderSearchResults(searchState: SearchState): TemplateResult {
 }
 
 export function renderSearchItem(item: SearchItem & { group: string }): TemplateResult {
-  const metadata = [item.artist, item.album, item.provider].map(formatMediaValue).filter(Boolean).join(' · ') || item.group;
+  const metadata = getSearchItemMetadata(item);
   const thumbnail = item.image
     ? html`<img src="${item.image}" alt="" loading="lazy" />`
     : html`<ha-icon icon="mdi:music-note"></ha-icon>`;
-  const canExpand = item.can_expand === true;
   const canPlay = item.is_playable !== false;
   return html`<div
     class="media-row"
     data-search-uri="${item.uri}"
     data-search-type="${item.media_type ?? item.group}"
-    data-search-expand="${canExpand}"
+    data-search-expand="false"
   >
     <span class="thumb" aria-hidden="true">${thumbnail}</span
     ><span class="media-copy"
       ><span class="media-title">${item.name}</span
-      ><span class="media-meta">${canExpand ? `${metadata} · Open` : metadata}</span></span
+      ><span class="media-meta">${metadata}</span></span
     >${canPlay ? renderRowActions() : nothing}
   </div>`;
+}
+
+export function getSearchItemMetadata(item: SearchItem & { group: string }): string {
+  if (item.group === 'albums') return formatMediaValue(item.artist) || 'Album';
+  if (item.group === 'tracks') {
+    return [item.artist, item.album].map(formatMediaValue).filter(Boolean).join(' - ') || 'Track';
+  }
+  return [item.artist, item.album, item.provider].map(formatMediaValue).filter(Boolean).join(' · ') || item.group;
 }
