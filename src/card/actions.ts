@@ -180,6 +180,16 @@ export async function handleControl(context: ActionContext, control: string): Pr
     const next = repeat === 'off' ? 'all' : repeat === 'all' ? 'one' : 'off';
     await callService(context, 'media_player', 'repeat_set', { repeat: next });
   }
+  if (control === 'favorite') {
+    const player = hass?.states[config?.player ?? ''];
+    const mediaId = player?.attributes.media_content_id;
+    if (typeof mediaId === 'string' && mediaId) {
+      await callService(context, 'music_assistant', 'toggle_favorite', {
+        media_id: mediaId,
+        favorite: player.attributes.media_favorite !== true,
+      });
+    }
+  }
   if (control === 'clear-queue') {
     context.setState({ uiState: { ...context.getState().uiState, clearQueueConfirmOpen: true } });
   }

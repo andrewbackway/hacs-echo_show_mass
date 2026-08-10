@@ -12,20 +12,14 @@ function hass(callWS: HomeAssistant['callWS']): HomeAssistant {
 }
 
 describe('MusicAssistantCard lifecycle', () => {
-  it('keeps the newest browse response when an older request resolves later', async () => {
-    const calls: Array<(value: unknown) => void> = [];
-    const callWS = vi.fn(() => new Promise((resolve) => calls.push(resolve))) as unknown as HomeAssistant['callWS'];
+  it('does not open the removed breadcrumb browser', async () => {
+    const callWS = vi.fn() as unknown as HomeAssistant['callWS'];
     const card = new MusicAssistantCard();
     card.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room', show_queue: false });
     card.hass = hass(callWS);
     card.shadowRoot?.querySelector<HTMLElement>('[data-control="discover"]')?.click();
-    card.shadowRoot?.querySelector<HTMLElement>('[data-path-root]')?.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
-    calls[0]({
-      title: 'First',
-      children: [{ media_content_id: 'album://first', media_content_type: 'album', title: 'First album' }],
-    });
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(card.shadowRoot?.textContent).toContain('First album');
+    expect(callWS).not.toHaveBeenCalled();
+    expect(card.shadowRoot?.querySelector('[data-path-root]')).toBeNull();
   });
 });

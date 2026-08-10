@@ -27,6 +27,7 @@ export const cardStyles = `
   .playback-controls { display: flex; align-items: center; gap: 14px; }
   .utility-controls { display: flex; align-items: center; gap: 7px; }
   .utility-controls .repeat-control { margin-left: 14px; }
+  .favorite-control.active { border-color: var(--music-accent); color: var(--music-accent); }
   .repeat-control.active { border-color: var(--music-accent); color: var(--music-accent); }
   .repeat-control.muted { color: var(--music-muted); opacity: .72; }
 

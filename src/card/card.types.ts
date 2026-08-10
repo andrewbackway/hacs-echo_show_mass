@@ -18,7 +18,7 @@ export interface SearchState {
   response?: SearchResponse;
 }
 
-export type LibraryCategory = 'favorites' | LibraryMediaType;
+export type LibraryCategory = 'favorites' | 'recently_played' | LibraryMediaType;
 
 export interface LibraryState {
   selectedCategory: LibraryCategory | null;

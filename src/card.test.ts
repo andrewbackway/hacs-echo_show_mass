@@ -29,77 +29,68 @@ describe('MusicAssistantCard', () => {
       type: 'custom:music-assistant-card',
       player: '',
       music_assistant_config_entry_id: '',
-      layout: 'two-column',
       show_search: true,
       show_queue: true,
       click_action: 'play',
     });
   });
 
-  it('browses through the Music Assistant media source', async () => {
-    const callWS = vi.fn().mockResolvedValue({
-      title: 'Music Assistant',
-      children: [
-        {
-          media_content_id: 'album://1',
-          media_content_type: 'album',
-          title: 'Album',
-          thumbnail: '/local/album.jpg',
-          can_play: true,
-        },
-      ],
-    });
+  it('opens the category library without browsing media sources', async () => {
+    const callWS = vi.fn();
     const card = new MusicAssistantCard();
-    card.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room', show_queue: false });
-    card.hass = { ...createHass(), callWS };
+    card.setConfig({
+      type: 'custom:music-assistant-card',
+      player: 'media_player.living_room',
+      music_assistant_config_entry_id: 'entry-1',
+      show_queue: false,
+    });
+    card.hass = { ...createHass(), callWS, callService: vi.fn().mockResolvedValue({ response: { items: [] } }) };
     card.shadowRoot?.querySelector<HTMLElement>('[data-control="discover"]')?.click();
-    card.shadowRoot?.querySelector<HTMLElement>('[data-path-root]')?.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(callWS).toHaveBeenCalledWith({ type: 'media_source/browse_media', media_content_id: 'media-source://' });
-    expect(card.shadowRoot?.querySelector('[data-swiper="browse-results"] .swiper-wrapper')).toBeTruthy();
-    expect(card.shadowRoot?.querySelector('.media-title')?.textContent).toBe('Album');
-    expect(card.shadowRoot?.querySelector('.thumb img')?.getAttribute('src')).toBe('/local/album.jpg');
+    expect(callWS).not.toHaveBeenCalled();
+    expect(card.shadowRoot?.querySelector('[data-control="library-category:favorites"]')).toBeTruthy();
   });
 
-  it('returns to now playing after playing a browsed item', async () => {
-    let resolveService: (() => void) | undefined;
-    const callService = vi.fn(
-      () =>
-        new Promise<void>((resolve) => {
-          resolveService = resolve;
-        }),
-    );
-    const callWS = vi.fn().mockResolvedValue({
-      title: 'Music Assistant',
-      children: [
-        {
-          media_content_id: 'track://1',
-          media_content_type: 'track',
-          title: 'Track',
-          can_play: true,
-        },
-      ],
-    });
+  it('loads recently played tracks with recent ordering', async () => {
+    const callService = vi.fn().mockResolvedValue({ response: { items: [] } });
     const card = new MusicAssistantCard();
-    card.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room', show_queue: false });
-    card.hass = { ...createHass(callService), callWS };
+    card.setConfig({
+      type: 'custom:music-assistant-card',
+      player: 'media_player.living_room',
+      music_assistant_config_entry_id: 'entry-1',
+      show_queue: false,
+    });
+    card.hass = createHass(callService);
     card.shadowRoot?.querySelector<HTMLElement>('[data-control="discover"]')?.click();
-    card.shadowRoot?.querySelector<HTMLElement>('[data-path-root]')?.click();
+    card.shadowRoot?.querySelector<HTMLElement>('[data-control="library-category:recently_played"]')?.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
-
-    card.shadowRoot?.querySelector<HTMLElement>('[data-item-action="play"]')?.click();
-    expect(card.shadowRoot?.querySelector('[data-primary-view="now-playing"]')).toBeTruthy();
-    resolveService?.();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
     expect(callService).toHaveBeenCalledWith(
-      'music_assistant',
-      'play_media',
-      { media_id: 'track://1', media_type: 'track', enqueue: 'replace' },
-      { entity_id: 'media_player.living_room' },
-      true,
-      false,
+      'music_assistant', 'get_library',
+      { config_entry_id: 'entry-1', media_type: 'track', limit: 50, offset: 0, order_by: 'last_played' },
+      undefined, true, true,
     );
+  });
+
+  it('shows favorite state for the current media and refreshes it with the media id', () => {
+    const card = new MusicAssistantCard();
+    const hass = createHass();
+    hass.states['media_player.living_room'].attributes = {
+      friendly_name: 'Living Room',
+      media_content_id: 'track://first',
+      media_favorite: true,
+    };
+    card.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room', show_queue: false });
+    card.hass = hass;
+    expect(card.shadowRoot?.querySelector('[data-control="favorite"]')?.getAttribute('aria-pressed')).toBe('true');
+
+    const nextHass = createHass();
+    nextHass.states['media_player.living_room'].attributes = {
+      friendly_name: 'Living Room',
+      media_content_id: 'track://second',
+      media_favorite: false,
+    };
+    card.hass = nextHass;
+    expect(card.shadowRoot?.querySelector('[data-control="favorite"]')?.getAttribute('aria-pressed')).toBe('false');
   });
 
   it('opens search without requiring the media browser', () => {

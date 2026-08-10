@@ -21,8 +21,7 @@ import { callService, runAction, type ActionContext } from './card/actions';
 import { createClickHandler } from './card/events';
 import { renderTopMenu } from './card/views/topmenu.view';
 import { renderNowPlaying } from './card/views/now-playing.view';
-import { renderLibraryNavigation, renderLibraryResults, renderSearchInput, renderSearchResults } from './card/views/search.view';
-import { renderMediaList, renderPath } from './card/views/media-list.view';
+import { libraryCategories, renderLibraryNavigation, renderLibraryResults, renderSearchInput, renderSearchResults } from './card/views/search.view';
 import { renderActiveFlyout } from './card/views/flyout.view';
 import './editor';
 
@@ -37,7 +36,6 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
     return {
       type: 'custom:music-assistant-card',
       player: '',
-      layout: 'two-column',
       music_assistant_config_entry_id: '',
       show_search: true,
       show_queue: true,
@@ -110,11 +108,11 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
     );
     this.config = {
       type: CARD_TAG,
-      layout: 'two-column',
       music_assistant_config_entry_id:
         typeof config.music_assistant_config_entry_id === 'string' ? config.music_assistant_config_entry_id.trim() : '',
       show_search: true,
       show_queue: true,
+      search_categories: libraryCategories.map((category) => category.id),
       click_action: 'play',
       ...providedConfig,
       player: config.player.trim(),
@@ -122,13 +120,12 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
         ? config.players.filter((player): player is string => typeof player === 'string' && player.trim().length > 0)
         : [],
     };
-    if (!this.config.music_assistant_config_entry_id)
-      this.store.setState({ libraryState: { ...this.store.getState().libraryState, selectedCategory: null } });
     if (
       previousConfig &&
       (previousConfig.player !== this.config.player ||
         JSON.stringify(previousConfig.players) !== JSON.stringify(this.config.players) ||
-        previousConfig.music_assistant_config_entry_id !== this.config.music_assistant_config_entry_id)
+        previousConfig.music_assistant_config_entry_id !== this.config.music_assistant_config_entry_id ||
+        JSON.stringify(previousConfig.search_categories) !== JSON.stringify(this.config.search_categories))
     ) {
       this.queueRequested = false;
       this.queueCache = undefined;
@@ -140,6 +137,7 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
     } else {
       this.render();
     }
+    this.ensureSelectedCategoryVisible();
   }
 
   disconnectedCallback(): void {
@@ -307,9 +305,8 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
   private render(): void {
     if (!this.config) return;
     this.syncProgressTimer();
-    const { browseState, searchState, libraryState, queueState, speakerState, uiState, operationError } =
+    const { searchState, libraryState, queueState, speakerState, uiState, operationError } =
       this.store.getState();
-    const mediaItems = browseState.response?.children ?? [];
     const player = this._hass?.states[this.config.player];
     const renderedQueueState = this.queueCache ? { ...queueState, details: this.queueCache.details } : queueState;
 
@@ -318,13 +315,16 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
         ? html`<section class="search-screen primary-view" data-primary-view="search">
             ${this.config.show_search ? renderSearchInput(libraryState.query || searchState.query) : nothing}
             <div class="search-layout">
-              ${renderLibraryNavigation(libraryState.selectedCategory)}
+              ${renderLibraryNavigation(
+                libraryState.selectedCategory,
+                this.getVisibleLibraryCategories(),
+              )}
               <section class="search-results" aria-label="Media results">
                 ${libraryState.selectedCategory
                   ? renderLibraryResults(libraryState)
                   : searchState.query
                     ? renderSearchResults(searchState)
-                    : html`${renderPath(browseState.path)}${renderMediaList(browseState, mediaItems)}`}
+                    : html`<p class="state">Choose a library category.</p>`}
               </section>
             </div>
           </section>`
@@ -357,10 +357,28 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
     const groupedNames = groupedPlayerIds
       .map((playerId) => this._hass?.states[playerId]?.attributes.friendly_name)
       .filter((name): name is string => typeof name === 'string' && name.trim().length > 0);
-    if (groupedNames.length > 0) return groupedNames.join(' + ');
+    const uniqueNames = [...new Set(groupedNames.map((name) => name.trim()))];
+    if (uniqueNames.length > 0) return uniqueNames.join(' + ');
     const configuredName = this.config ? this._hass?.states[this.config.player]?.attributes.friendly_name : undefined;
     if (typeof configuredName === 'string' && configuredName.trim()) return configuredName.trim();
     return this.config?.player ?? 'Speaker';
+  }
+
+  private getVisibleLibraryCategories(): import('./card/card.types').LibraryCategory[] {
+    const configured = this.config?.search_categories;
+    const available = libraryCategories.map((category) => category.id);
+    if (!Array.isArray(configured) || configured.length === 0) return available;
+    const visible = configured.filter((category): category is import('./card/card.types').LibraryCategory =>
+      available.includes(category as import('./card/card.types').LibraryCategory),
+    );
+    return visible.length > 0 ? visible : available;
+  }
+
+  private ensureSelectedCategoryVisible(): void {
+    const libraryState = this.store.getState().libraryState;
+    const visible = this.getVisibleLibraryCategories();
+    if (libraryState.selectedCategory && visible.includes(libraryState.selectedCategory)) return;
+    this.store.setState({ libraryState: { ...libraryState, selectedCategory: visible[0] ?? null } });
   }
 
   private async runSearch(query: string): Promise<void> {
@@ -408,7 +426,13 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
       await this.loadFavorites(query, append);
       return;
     }
-    await this.loadLibraryPage(selectedCategory, query, append, false);
+    await this.loadLibraryPage(
+      selectedCategory === 'recently_played' ? 'track' : selectedCategory,
+      query,
+      append,
+      false,
+      selectedCategory === 'recently_played' ? 'last_played' : 'name',
+    );
   }
 
   private async loadFavorites(query: string, append: boolean): Promise<void> {
@@ -477,6 +501,7 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
     query: string,
     append: boolean,
     favorite: boolean,
+    orderBy = 'name',
   ): Promise<void> {
     const current = this.store.getState().libraryState;
     const selectedCategory = current.selectedCategory;
@@ -501,7 +526,7 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
         search: query.trim() || undefined,
         limit: current.limit,
         offset,
-        orderBy: 'name',
+        orderBy,
       });
       const latest = this.store.getState().libraryState;
       if (!request.isCurrent() || latest.selectedCategory !== selectedCategory || latest.query !== query) return;

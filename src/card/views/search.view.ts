@@ -14,7 +14,8 @@ export function renderSearchInput(query: string): TemplateResult {
   /></label>`;
 }
 
-const libraryCategories: Array<{ id: LibraryCategory; label: string; icon: string }> = [
+export const libraryCategories: Array<{ id: LibraryCategory; label: string; icon: string }> = [
+  { id: 'recently_played', label: 'Recently played', icon: 'mdi:history' },
   { id: 'favorites', label: 'Favorites', icon: 'mdi:star' },
   { id: 'artist', label: 'Artists', icon: 'mdi:account-music' },
   { id: 'album', label: 'Albums', icon: 'mdi:album' },
@@ -24,10 +25,13 @@ const libraryCategories: Array<{ id: LibraryCategory; label: string; icon: strin
   { id: 'radio', label: 'Radio', icon: 'mdi:radio' },
 ];
 
-export function renderLibraryNavigation(selectedCategory: LibraryCategory | null): TemplateResult {
+export function renderLibraryNavigation(
+  selectedCategory: LibraryCategory | null,
+  visibleCategories: LibraryCategory[] = libraryCategories.map((category) => category.id),
+): TemplateResult {
   return html`<nav class="library-navigation swiper" data-swiper="library-navigation" data-swiper-responsive="horizontal" aria-label="Music library categories">
     <div class="swiper-wrapper">
-      ${libraryCategories.map(
+      ${libraryCategories.filter((category) => visibleCategories.includes(category.id)).map(
         (category) => html`<div class="swiper-slide">
           <button
             class="library-category${selectedCategory === category.id ? ' selected' : ''}"
@@ -72,7 +76,12 @@ function renderLibraryItem(item: LibraryItem, category: LibraryCategory): Templa
   const canExpand = item.can_expand === true || ['artist', 'album', 'playlist', 'podcast'].includes(category);
   const canPlay = item.is_playable !== false && category !== 'artist';
   const mediaType = item.media_type ?? (category === 'favorites' ? 'track' : category);
-  const metadata = [item.artist, item.album, item.provider].map(formatMediaValue).filter(Boolean).join(' · ') || category;
+  const metadata =
+    category === 'album'
+      ? formatMediaValue(item.artist) || 'Album'
+      : category === 'track'
+        ? [item.artist, item.album].map(formatMediaValue).filter(Boolean).join(' - ') || 'Track'
+        : [item.artist, item.album, item.provider].map(formatMediaValue).filter(Boolean).join(' · ') || category;
   const thumbnail = item.image
     ? html`<img src="${item.image}" alt="" loading="lazy" />`
     : html`<ha-icon icon="mdi:music-note"></ha-icon>`;

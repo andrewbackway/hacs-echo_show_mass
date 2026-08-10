@@ -1,4 +1,5 @@
 import type { HomeAssistant, MusicAssistantCardConfig } from './home-assistant';
+import { libraryCategories } from './card/views/search.view';
 
 const EDITOR_TAG = 'music-assistant-card-editor';
 
@@ -19,7 +20,6 @@ export class MusicAssistantCardEditor extends HTMLElement {
     player: '',
     music_assistant_config_entry_id: '',
     players: [],
-    layout: 'two-column',
     show_search: true,
     show_queue: true,
     click_action: 'play',
@@ -71,6 +71,9 @@ export class MusicAssistantCardEditor extends HTMLElement {
           <ha-switch id="show-search">Global search</ha-switch>
           <ha-switch id="show-queue">Playback queue</ha-switch>
         </div>
+        <div class="switches" aria-label="Search categories">
+          ${libraryCategories.map((category) => `<ha-switch id="category-${category.id}">${category.label}</ha-switch>`).join('')}
+        </div>
       </form>`;
 
     const player = this.getControl('player');
@@ -104,6 +107,20 @@ export class MusicAssistantCardEditor extends HTMLElement {
     const showQueue = this.getControl('show-queue');
     showQueue.checked = this.config.show_queue !== false;
     this.listenChecked(showQueue, 'show_queue');
+
+    const visibleCategories = Array.isArray(this.config.search_categories) && this.config.search_categories.length > 0
+      ? this.config.search_categories
+      : libraryCategories.map((category) => category.id);
+    for (const category of libraryCategories) {
+      const control = this.getControl(`category-${category.id}`);
+      control.checked = visibleCategories.includes(category.id);
+      control.addEventListener('change', () => {
+        const selected = libraryCategories
+          .filter((candidate) => Boolean(this.getControl(`category-${candidate.id}`).checked))
+          .map((candidate) => candidate.id);
+        this.updateConfig('search_categories', selected);
+      });
+    }
   }
 
   private getControl(id: string): HassControl {

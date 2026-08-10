@@ -86,7 +86,7 @@ npm run build
 Then update the version in `package.json`, run the checks above, and publish the commit and release. Replace `x.x.x` with the next semantic version:
 
 ```powershell
-$version = "0.5.2"
+$version = "0.5.7"
 
 git add package.json src music-assistant-card.js dist/music-assistant-card.js
 git commit -m "Release Music Assistant card v$version"
@@ -140,17 +140,25 @@ Add a manual card to a dashboard:
 type: custom:music-assistant-card
 player: media_player.living_room
 music_assistant_config_entry_id: 01JEXNDHT21V0BHJXM7A5SZANV
-layout: two-column
 show_search: true
 show_queue: true
 click_action: play
+search_categories:
+  - recently_played
+  - favorites
+  - artist
+  - album
+  - track
+  - playlist
+  - podcast
+  - radio
 ```
 
-The `player` value must be a Music Assistant `media_player` entity or synchronized group exposed by Home Assistant. `music_assistant_config_entry_id` is required for Favorites and category library loading; it is the config entry ID of the Music Assistant integration. Optionally provide `players` as a YAML list to limit the permitted player picker; leave it blank or omit it to permit all players. The primary `player` is always included. No server URL, ingress token, or Music Assistant credential is required in YAML. The visual editor allows an incomplete new-card configuration while it is being filled in.
+The `player` value must be a Music Assistant `media_player` entity or synchronized group exposed by Home Assistant. `music_assistant_config_entry_id` is required for Favorites and category library loading; it is the config entry ID of the Music Assistant integration. `search_categories` controls the visible Search rail and accepts `favorites`, `recently_played`, `artist`, `album`, `track`, `playlist`, `podcast`, and `radio`; omit it to show every category. Recently played uses the Music Assistant track library sorted by `last_played`. Optionally provide `players` as a YAML list to limit the permitted player picker; leave it blank or omit it to permit all players. The primary `player` is always included. No server URL, ingress token, or Music Assistant credential is required in YAML. The visual editor allows an incomplete new-card configuration while it is being filled in.
 
 ## Known limitations
 
-Playlist listing/mutation and favorites are currently deferred. Grouping is available only when Home Assistant reports the required media-player capability.
+Playlist listing/mutation is currently deferred. Favorite state follows the current player media metadata and is refreshed when the media ID changes. Grouping is available only when Home Assistant reports the required media-player capability.
 
 ## Home Assistant configuration
 
@@ -159,7 +167,6 @@ Install the repository through HACS as a dashboard frontend resource, then add t
 ```yaml
 type: custom:music-assistant-card
 player: media_player.living_room
-layout: two-column
 show_search: true
 show_queue: true
 click_action: play

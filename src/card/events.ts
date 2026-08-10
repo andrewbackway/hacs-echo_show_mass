@@ -3,10 +3,8 @@ import { toMediaItemFromSearch } from './dom';
 import { applySpeakerSelection, handleControl, playMedia, playQueueItem, runAction, runSpeakerAction } from './actions';
 import type { ActionContext } from './actions';
 
-export const ROOT_MEDIA_ID = 'media-source://';
-
 const CLICK_TARGET_SELECTOR =
-  '[data-speaker-action], [data-speaker-id], [data-item-action], [data-item-index], [data-search-uri], [data-path-index], [data-path-root], [data-path-back], [data-control], [data-queue-index]';
+  '[data-speaker-action], [data-speaker-id], [data-item-action], [data-item-index], [data-search-uri], [data-control], [data-queue-index]';
 
 /**
  * Builds the card's single delegated click handler. Routing is a sequence of dataset-attribute
@@ -88,25 +86,6 @@ export function createClickHandler(context: ActionContext): (event: Event) => vo
           playMedia(context, target.dataset.searchUri as string, target.dataset.searchType ?? 'music'),
         );
       }
-      return;
-    }
-
-    if (target.dataset.pathRoot !== undefined) {
-      void context.loadMedia(ROOT_MEDIA_ID, []);
-      return;
-    }
-
-    if (target.dataset.pathBack !== undefined) {
-      const parentPath = context.getState().browseState.path.slice(0, -1);
-      void context.loadMedia(parentPath.at(-1)?.media_content_id ?? ROOT_MEDIA_ID, parentPath);
-      return;
-    }
-
-    if (target.dataset.pathIndex !== undefined) {
-      const index = Number(target.dataset.pathIndex);
-      const path = context.getState().browseState.path;
-      const pathTarget = path[index];
-      void context.loadMedia(pathTarget?.media_content_id ?? ROOT_MEDIA_ID, path.slice(0, index + 1));
       return;
     }
 

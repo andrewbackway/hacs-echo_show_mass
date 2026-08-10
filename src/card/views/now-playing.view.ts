@@ -10,6 +10,8 @@ export function renderNowPlaying(player?: PlayerLike, livePosition?: number): Te
   const artistValue = typeof attributes.media_artist === 'string' ? attributes.media_artist.trim() : '';
   const artist = artistValue;
   const image = typeof attributes.entity_picture === 'string' ? attributes.entity_picture : undefined;
+  const mediaContentId = typeof attributes.media_content_id === 'string' ? attributes.media_content_id : '';
+  const isFavorite = attributes.media_favorite === true;
   const isPlaying = player?.state === 'playing';
   const duration = Number(attributes.media_duration ?? 0);
   const position = livePosition ?? Number(attributes.media_position ?? 0);
@@ -51,6 +53,15 @@ export function renderNowPlaying(player?: PlayerLike, livePosition?: number): Te
         ><button class="control" data-control="next" type="button" aria-label="Next track">
           <ha-icon icon="mdi:skip-next"></ha-icon></button></span
       ><span class="utility-controls"
+        ><button
+          class="control favorite-control${isFavorite ? ' active' : ''}"
+          data-control="favorite"
+          type="button"
+          aria-label="${isFavorite ? 'Remove from favorites' : 'Add to favorites'}"
+          aria-pressed="${isFavorite}"
+          ?disabled=${!mediaContentId}
+        >
+          <ha-icon icon="mdi:star${isFavorite ? '' : '-outline'}"></ha-icon></button
         ><button
           class="control repeat-control ${repeatClass}"
           data-control="repeat"

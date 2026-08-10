@@ -28,7 +28,11 @@ export function renderQueue(queueState: QueueState, currentDuration?: number): T
 export function renderQueueItem(item: QueueItem, current: boolean, currentDuration?: number): TemplateResult {
   const metadata = [item.artist, item.album].filter(Boolean).join(' · ');
   const duration = item.duration ?? currentDuration;
+  const image = item.image_url ?? item.image;
   return html`<div class="queue-row${current ? ' current' : ''}">
+    <span class="thumb" aria-hidden="true"
+      >${image ? html`<img src="${image}" alt="" loading="lazy" />` : html`<ha-icon icon="mdi:music-note"></ha-icon>`}</span
+    >
     <span class="media-copy"
       ><span class="media-title">${String(item.name ?? 'Untitled')}</span
       ><span class="media-meta">${metadata || 'Queue item'}${duration ? ` · ${formatDuration(duration)}` : ''}</span></span
@@ -38,6 +42,5 @@ export function renderQueueItem(item: QueueItem, current: boolean, currentDurati
           <ha-icon icon="mdi:play"></ha-icon>
         </button>`
       : nothing}
-    >
   </div>`;
 }
