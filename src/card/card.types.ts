@@ -52,6 +52,7 @@ export interface CardUiState {
   primaryView: PrimaryView;
   activeFlyout: FlyoutKind | null;
   clearQueueConfirmOpen: boolean;
+  playbackStarting: boolean;
 }
 
 /** Minimal shape of a `media_player` entity state needed by the now-playing view. */

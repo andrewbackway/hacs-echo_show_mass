@@ -190,6 +190,30 @@ describe('MusicAssistantCard', () => {
     );
   });
 
+  it('shows preparation feedback until playback starts', async () => {
+    const callService = vi.fn().mockResolvedValue({});
+    const card = new MusicAssistantCard();
+    card.setConfig({ type: 'custom:music-assistant-card', player: 'media_player.living_room', show_queue: false });
+    const hass = createHass(callService);
+    card.hass = hass;
+
+    const playback = playMedia(card['actionContext'], 'track://1', 'track');
+    expect(card.shadowRoot?.querySelector('.playback-starting')?.textContent).toBe('Getting things ready...');
+
+    card.hass = {
+      ...hass,
+      states: {
+        ...hass.states,
+        'media_player.living_room': {
+          ...hass.states['media_player.living_room'],
+          state: 'playing',
+        },
+      },
+    };
+    expect(card.shadowRoot?.querySelector('.playback-starting')).toBeNull();
+    await playback;
+  });
+
   it('uses media_player.media_next_track for the next button', async () => {
     const callService = vi.fn().mockResolvedValue({});
     const card = new MusicAssistantCard();

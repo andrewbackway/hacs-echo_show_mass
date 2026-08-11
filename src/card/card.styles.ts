@@ -57,6 +57,7 @@ export const cardStyles = `
   .flyout[data-flyout="queue"] .queue-list { height: 100%; max-height: none; }
   .confirm-backdrop { position: absolute; z-index: 40; inset: 0; display: grid; place-items: center; padding: 24px; background: rgb(0 0 0 / 52%); }
   .confirm-dialog { display: grid; gap: 14px; width: min(100%, 360px); box-sizing: border-box; padding: 20px; border: 1px solid var(--music-line); border-radius: 8px; background: var(--music-raised); box-shadow: 0 16px 36px rgb(0 0 0 / 35%); }
+  .playback-starting { position: absolute; z-index: 50; inset: 0; display: grid; place-items: center; padding: 24px; background: var(--music-bg); color: var(--music-text); font-size: 18px; font-weight: 600; text-align: center; }
   .confirm-actions { display: flex; justify-content: flex-end; gap: 8px; }
   .control.danger { border-color: var(--error-color, #ff8f8f); color: var(--error-color, #ff8f8f); }
   .flyout-body .speaker-sheet, .flyout-body .playlist-sheet { display: block; margin: 0; padding: 0; border: 0; background: transparent; }

@@ -39,6 +39,10 @@ export async function playMedia(
   const config = context.getConfig();
   if (!context.getHass() || !config) return;
   const enqueue = option ?? (config.click_action === 'queue' ? 'add' : 'replace');
+  if (enqueue === 'replace') {
+    const uiState = context.getState().uiState;
+    context.setState({ uiState: { ...uiState, playbackStarting: true } });
+  }
   await callService(
     context,
     'music_assistant',
@@ -98,6 +102,7 @@ export async function handleControl(context: ActionContext, control: string): Pr
         primaryView: uiState.primaryView === 'search' ? 'now-playing' : 'search',
         activeFlyout: null,
         clearQueueConfirmOpen: false,
+        playbackStarting: uiState.playbackStarting,
       },
     });
     if (context.getState().uiState.primaryView === 'search') void context.loadLibrary();
@@ -200,6 +205,10 @@ export async function runAction(context: ActionContext, action: () => Promise<vo
   try {
     await action();
   } catch (error) {
-    context.setState({ operationError: error instanceof Error ? error.message : 'The playback action failed.' });
+    const uiState = context.getState().uiState;
+    context.setState({
+      operationError: error instanceof Error ? error.message : 'The playback action failed.',
+      uiState: { ...uiState, playbackStarting: false },
+    });
   }
 }

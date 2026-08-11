@@ -238,6 +238,9 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
     this.lastHass = hass;
     this._hass = hass;
     if (sessionChanged) this.invalidateRequests();
+    if (nextPlayState === 'playing' && this.store.getState().uiState.playbackStarting) {
+      this.store.setState({ uiState: { ...this.store.getState().uiState, playbackStarting: false } });
+    }
     if (this.hasRelevantHassChange(previousHass, hass)) this.render();
     this.syncProgressTimer();
     if (this.config?.show_queue && (!this.queueRequested || mediaContentChanged || playStateChanged)) {
@@ -411,6 +414,9 @@ export class MusicAssistantCard extends HTMLElement implements LovelaceCard {
           currentPlayer: player,
           volumePercent: Number(this._hass?.states[this.config.player]?.attributes.volume_level ?? 0) * 100,
         })}
+        ${uiState.playbackStarting
+          ? html`<div class="playback-starting" role="status" aria-live="polite">Getting things ready...</div>`
+          : nothing}
         ${operationError ? html`<p class="state error" role="alert">${operationError}</p>` : nothing}
       </section>`,
       this.container,

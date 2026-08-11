@@ -26,7 +26,7 @@ export function createInitialState(): CardState {
     },
     queueState: { loading: false },
     speakerState: { loading: false },
-    uiState: { primaryView: 'now-playing', activeFlyout: null, clearQueueConfirmOpen: false },
+    uiState: { primaryView: 'now-playing', activeFlyout: null, clearQueueConfirmOpen: false, playbackStarting: false },
   };
 }
 
