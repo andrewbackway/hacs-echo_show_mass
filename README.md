@@ -97,7 +97,7 @@ Validate the completed build in a real Home Assistant Lovelace dashboard, where 
 Update the version in `package.json`, run the checks above, and use the GitHub CLI to publish a tagged release. Replace `x.x.x` with the new semantic version:
 
 ```powershell
-$version = "2.0.0"
+$version = "2.0.1"
 
 git add package.json src music-assistant-card.js dist/music-assistant-card.js
 git commit -m "Release Music Assistant card v$version"

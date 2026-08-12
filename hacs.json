@@ -2,5 +2,6 @@
   "name": "Echo Show Music Assistant Card",
   "content_in_root": true,
   "filename": "music-assistant-card.js",
-  "homeassistant": "2024.1.0"
+  "homeassistant": "2024.1.0",
+  "render_readme": true
 }
