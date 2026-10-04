@@ -71,8 +71,21 @@ players:
 | `music_assistant_config_entry_id` | For library and search | The Music Assistant integration config entry ID. Without it, playback controls still work, but library categories, Favorites, and full-text search cannot load. |
 | `click_action` | No | `play` (default) replaces the current queue when a media item is selected. `queue` adds the selected item to the queue. Individual media rows also provide explicit play and queue actions. |
 | `players` | No | A YAML list that limits the speaker picker to selected `media_player` entities. The primary `player` remains available even if it is not listed. Omit it to show all media players. |
+| `search_categories` | No | A manual YAML list that limits which music-library categories are shown. This option is not available in the visual editor; omit it to show all categories. |
 
-The card includes the music library, search, and queue controls by default. Older options such as `layout`, `show_search`, `show_queue`, and `search_categories` are not part of the visual editor and should not be used in new configurations.
+Supported `search_categories` values are `recently_played`, `playlist`, `favorites`, `album`, `podcast`, and `radio`. The card also supports `artist` and `track`. Values are category IDs, not display labels. For example, to show only the six categories listed above:
+
+```yaml
+search_categories:
+  - recently_played
+  - playlist
+  - favorites
+  - album
+  - podcast
+  - radio
+```
+
+Favorites is always moved to the first position when it is included. Invalid values are ignored; if the list is empty or contains no valid values, all categories are shown. The card includes the music library, search, and queue controls by default. Older options such as `layout`, `show_search`, and `show_queue` are not part of the visual editor and should not be used in new configurations.
 
 ## 4. Build And Deployment
 
